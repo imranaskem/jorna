@@ -1,0 +1,11 @@
+[package]
+name = "jorna"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ratatui = { version = "0.30", features = ["crossterm_0_29"] }
+crossterm = "0.29"
+reqwest = { version = "0.12", features = ["blocking"] }
+anyhow = "1.0"
+serde_json = "1.0"
