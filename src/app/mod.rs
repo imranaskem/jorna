@@ -189,9 +189,17 @@ impl App {
     // Multi-line text input helpers
     pub fn handle_multiline_char(&mut self, c: char, is_headers: bool) {
         let (lines, cursor_line, cursor_col) = if is_headers {
-            (&mut self.headers_input, &mut self.headers_cursor_line, &mut self.headers_cursor_col)
+            (
+                &mut self.headers_input,
+                &mut self.headers_cursor_line,
+                &mut self.headers_cursor_col,
+            )
         } else {
-            (&mut self.body_input, &mut self.body_cursor_line, &mut self.body_cursor_col)
+            (
+                &mut self.body_input,
+                &mut self.body_cursor_line,
+                &mut self.body_cursor_col,
+            )
         };
 
         if *cursor_line >= lines.len() {
@@ -205,9 +213,17 @@ impl App {
 
     pub fn handle_multiline_backspace(&mut self, is_headers: bool) {
         let (lines, cursor_line, cursor_col) = if is_headers {
-            (&mut self.headers_input, &mut self.headers_cursor_line, &mut self.headers_cursor_col)
+            (
+                &mut self.headers_input,
+                &mut self.headers_cursor_line,
+                &mut self.headers_cursor_col,
+            )
         } else {
-            (&mut self.body_input, &mut self.body_cursor_line, &mut self.body_cursor_col)
+            (
+                &mut self.body_input,
+                &mut self.body_cursor_line,
+                &mut self.body_cursor_col,
+            )
         };
 
         if *cursor_col > 0 {
@@ -223,9 +239,17 @@ impl App {
 
     pub fn handle_multiline_enter(&mut self, is_headers: bool) {
         let (lines, cursor_line, cursor_col) = if is_headers {
-            (&mut self.headers_input, &mut self.headers_cursor_line, &mut self.headers_cursor_col)
+            (
+                &mut self.headers_input,
+                &mut self.headers_cursor_line,
+                &mut self.headers_cursor_col,
+            )
         } else {
-            (&mut self.body_input, &mut self.body_cursor_line, &mut self.body_cursor_col)
+            (
+                &mut self.body_input,
+                &mut self.body_cursor_line,
+                &mut self.body_cursor_col,
+            )
         };
 
         let rest = lines[*cursor_line].split_off(*cursor_col);
@@ -236,9 +260,17 @@ impl App {
 
     pub fn handle_multiline_up(&mut self, is_headers: bool) {
         let (cursor_line, cursor_col, lines) = if is_headers {
-            (&mut self.headers_cursor_line, &mut self.headers_cursor_col, &self.headers_input)
+            (
+                &mut self.headers_cursor_line,
+                &mut self.headers_cursor_col,
+                &self.headers_input,
+            )
         } else {
-            (&mut self.body_cursor_line, &mut self.body_cursor_col, &self.body_input)
+            (
+                &mut self.body_cursor_line,
+                &mut self.body_cursor_col,
+                &self.body_input,
+            )
         };
 
         if *cursor_line > 0 {
@@ -249,9 +281,17 @@ impl App {
 
     pub fn handle_multiline_down(&mut self, is_headers: bool) {
         let (cursor_line, cursor_col, lines) = if is_headers {
-            (&mut self.headers_cursor_line, &mut self.headers_cursor_col, &self.headers_input)
+            (
+                &mut self.headers_cursor_line,
+                &mut self.headers_cursor_col,
+                &self.headers_input,
+            )
         } else {
-            (&mut self.body_cursor_line, &mut self.body_cursor_col, &self.body_input)
+            (
+                &mut self.body_cursor_line,
+                &mut self.body_cursor_col,
+                &self.body_input,
+            )
         };
 
         if *cursor_line + 1 < lines.len() {
@@ -274,9 +314,17 @@ impl App {
 
     pub fn handle_multiline_right(&mut self, is_headers: bool) {
         let (cursor_line, cursor_col, lines) = if is_headers {
-            (&self.headers_cursor_line, &mut self.headers_cursor_col, &self.headers_input)
+            (
+                &self.headers_cursor_line,
+                &mut self.headers_cursor_col,
+                &self.headers_input,
+            )
         } else {
-            (&self.body_cursor_line, &mut self.body_cursor_col, &self.body_input)
+            (
+                &self.body_cursor_line,
+                &mut self.body_cursor_col,
+                &self.body_input,
+            )
         };
 
         if *cursor_col < lines[*cursor_line].len() {

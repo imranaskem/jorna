@@ -336,7 +336,10 @@ fn test_body_input_ctrl_enter_sends_request() {
     app.http_method = "POST".to_string();
     app.body_input = vec!["{}".to_string()];
 
-    handle_key_event(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL));
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+    );
 
     // Ctrl+Enter should send request
     assert!(!app.response.is_empty());

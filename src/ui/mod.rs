@@ -93,7 +93,10 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         }
         lines_with_cursor
     } else {
-        app.headers_input.iter().map(|line| Line::from(line.as_str())).collect()
+        app.headers_input
+            .iter()
+            .map(|line| Line::from(line.as_str()))
+            .collect()
     };
 
     let headers_widget = Paragraph::new(headers_text)
@@ -130,7 +133,10 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         }
         lines_with_cursor
     } else {
-        app.body_input.iter().map(|line| Line::from(line.as_str())).collect()
+        app.body_input
+            .iter()
+            .map(|line| Line::from(line.as_str()))
+            .collect()
     };
 
     let body_widget = Paragraph::new(body_text)

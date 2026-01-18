@@ -494,11 +494,7 @@ fn test_send_request_trims_whitespace_in_body() {
     let mut app = App::new();
     app.url_input = "https://httpbin.org/post".to_string();
     app.http_method = "POST".to_string();
-    app.body_input = vec![
-        "".to_string(),
-        "  ".to_string(),
-        "".to_string(),
-    ];
+    app.body_input = vec!["".to_string(), "  ".to_string(), "".to_string()];
 
     app.send_request();
 
