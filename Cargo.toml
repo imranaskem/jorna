@@ -2,6 +2,7 @@
 name = "jorna"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
 
 [dependencies]
 ratatui = { version = "0.30", features = ["crossterm_0_29"] }
