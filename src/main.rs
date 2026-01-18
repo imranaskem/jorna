@@ -7,12 +7,12 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{self, stdout};
 
 mod app;
-mod ui;
 mod event;
+mod ui;
 
 use app::App;
-use ui::ui;
 use event::handle_key_event;
+use ui::ui;
 
 fn run_app(
     terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,

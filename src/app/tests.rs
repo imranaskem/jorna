@@ -8,9 +8,9 @@ fn test_app_initialization() {
     assert_eq!(app.cursor_position, app.url_input.len());
     assert_eq!(app.response, "Response will appear here...");
     assert_eq!(app.response_scroll, 0);
-    assert_eq!(app.loading, false);
+    assert!(!app.loading);
     assert_eq!(app.focus, AppFocus::MethodSelector);
-    assert_eq!(app.should_quit, false);
+    assert!(!app.should_quit);
     assert_eq!(app.http_method, "GET");
     assert_eq!(app.method_index, 0);
 }
@@ -161,7 +161,7 @@ fn test_send_request_with_empty_url() {
     app.send_request();
 
     assert_eq!(app.response, "Error: URL cannot be empty");
-    assert_eq!(app.loading, false);
+    assert!(!app.loading);
 }
 
 #[test]

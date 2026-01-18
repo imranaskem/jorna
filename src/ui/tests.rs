@@ -71,7 +71,7 @@ fn test_ui_renders_with_different_methods() {
 
         terminal
             .draw(|f| ui(f, &app))
-            .expect(&format!("UI should render with {} method", method));
+            .unwrap_or_else(|_| panic!("UI should render with {} method", method));
     }
 }
 
@@ -93,7 +93,8 @@ fn test_ui_renders_with_long_url() {
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).unwrap();
     let mut app = App::new();
-    app.url_input = "https://example.com/very/long/path/with/many/segments/to/test/rendering".to_string();
+    app.url_input =
+        "https://example.com/very/long/path/with/many/segments/to/test/rendering".to_string();
     app.cursor_position = app.url_input.len();
 
     terminal
@@ -188,6 +189,6 @@ fn test_ui_renders_all_http_methods() {
 
         terminal
             .draw(|f| ui(f, &app))
-            .expect(&format!("UI should render with method index {}", index));
+            .unwrap_or_else(|_| panic!("UI should render with method index {}", index));
     }
 }

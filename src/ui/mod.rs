@@ -1,3 +1,4 @@
+use crate::app::{App, AppFocus};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     style::{Color, Style},
@@ -5,16 +6,15 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };
-use crate::app::{App, AppFocus};
 
 pub fn ui(frame: &mut Frame, app: &App) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3),  // Input area (method + URL)
-            Constraint::Length(1),  // Instructions
-            Constraint::Min(10),    // Response area
+            Constraint::Length(3), // Input area (method + URL)
+            Constraint::Length(1), // Instructions
+            Constraint::Min(10),   // Response area
         ])
         .split(frame.area());
 
@@ -22,8 +22,8 @@ pub fn ui(frame: &mut Frame, app: &App) {
     let input_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Length(12),  // Method selector
-            Constraint::Min(20),     // URL input
+            Constraint::Length(12), // Method selector
+            Constraint::Min(20),    // URL input
         ])
         .split(chunks[0]);
 
@@ -77,13 +77,15 @@ pub fn ui(frame: &mut Frame, app: &App) {
         "Loading..."
     } else {
         match app.focus {
-            AppFocus::MethodSelector => "↑↓: Change Method | Enter: Send | Tab: Next Focus | Esc: Quit",
+            AppFocus::MethodSelector => {
+                "↑↓: Change Method | Enter: Send | Tab: Next Focus | Esc: Quit"
+            }
             AppFocus::UrlInput => "Enter: Send | Tab: Next Focus | ←→: Move Cursor | Esc: Quit",
             AppFocus::Response => "↑↓: Scroll Response | Tab: Next Focus | Esc: Quit",
         }
     };
-    let instructions_widget = Paragraph::new(instructions)
-        .style(Style::default().fg(Color::DarkGray));
+    let instructions_widget =
+        Paragraph::new(instructions).style(Style::default().fg(Color::DarkGray));
     frame.render_widget(instructions_widget, chunks[1]);
 
     // Response

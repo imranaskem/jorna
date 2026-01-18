@@ -72,11 +72,12 @@ impl App {
                 match response.text() {
                     Ok(body) => {
                         // Try to parse and pretty-print JSON
-                        let formatted_body = if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
-                            serde_json::to_string_pretty(&json).unwrap_or(body)
-                        } else {
-                            body
-                        };
+                        let formatted_body =
+                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+                                serde_json::to_string_pretty(&json).unwrap_or(body)
+                            } else {
+                                body
+                            };
                         format!("{}{}", headers, formatted_body)
                     }
                     Err(e) => format!("Error reading response: {}", e),

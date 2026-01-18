@@ -1,5 +1,5 @@
-use crossterm::event::{KeyCode, KeyEvent};
 use crate::app::{App, AppFocus, METHODS};
+use crossterm::event::{KeyCode, KeyEvent};
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
     // Global keybindings
@@ -78,26 +78,24 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                 }
             }
         }
-        AppFocus::Response => {
-            match key.code {
-                KeyCode::Up => {
-                    app.response_scroll = app.response_scroll.saturating_sub(1);
-                }
-                KeyCode::Down => {
-                    app.response_scroll = app.response_scroll.saturating_add(1);
-                }
-                KeyCode::PageUp => {
-                    app.response_scroll = app.response_scroll.saturating_sub(10);
-                }
-                KeyCode::PageDown => {
-                    app.response_scroll = app.response_scroll.saturating_add(10);
-                }
-                KeyCode::Home => {
-                    app.response_scroll = 0;
-                }
-                _ => {}
+        AppFocus::Response => match key.code {
+            KeyCode::Up => {
+                app.response_scroll = app.response_scroll.saturating_sub(1);
             }
-        }
+            KeyCode::Down => {
+                app.response_scroll = app.response_scroll.saturating_add(1);
+            }
+            KeyCode::PageUp => {
+                app.response_scroll = app.response_scroll.saturating_sub(10);
+            }
+            KeyCode::PageDown => {
+                app.response_scroll = app.response_scroll.saturating_add(10);
+            }
+            KeyCode::Home => {
+                app.response_scroll = 0;
+            }
+            _ => {}
+        },
     }
 }
 
