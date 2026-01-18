@@ -14,22 +14,22 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            artifact_name: jorna
-            asset_name: jorna-linux-amd64
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            artifact_name: jorna
-            asset_name: jorna-macos-amd64
+          # - os: ubuntu-latest
+          #   target: x86_64-unknown-linux-gnu
+          #   artifact_name: jorna
+          #   asset_name: jorna-linux-amd64
+          # - os: macos-latest
+          #   target: x86_64-apple-darwin
+          #   artifact_name: jorna
+          #   asset_name: jorna-macos-amd64
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: jorna
             asset_name: jorna-macos-arm64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            artifact_name: jorna.exe
-            asset_name: jorna-windows-amd64.exe
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   artifact_name: jorna.exe
+          #   asset_name: jorna-windows-amd64.exe
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,10 +73,6 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-          files: |
-            artifacts/jorna-linux-amd64/jorna
-            artifacts/jorna-macos-amd64/jorna
-            artifacts/jorna-macos-arm64/jorna
-            artifacts/jorna-windows-amd64.exe/jorna.exe
+          files: artifacts/jorna-macos-arm64/jorna
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
