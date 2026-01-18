@@ -41,6 +41,23 @@ fn run_app(
 }
 
 fn main() -> anyhow::Result<()> {
+    // Handle command-line arguments
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.len() > 1 {
+        match args[1].as_str() {
+            "--version" | "-v" => {
+                println!("jorna v{}", env!("CARGO_PKG_VERSION"));
+                return Ok(());
+            }
+            _ => {
+                eprintln!("Unknown argument: {}", args[1]);
+                eprintln!("Usage: jorna [--version]");
+                std::process::exit(1);
+            }
+        }
+    }
+
     // Setup panic hook for guaranteed cleanup
     let original_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
