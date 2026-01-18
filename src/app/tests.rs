@@ -517,3 +517,83 @@ fn test_app_initialization_headers_and_body() {
     assert_eq!(app.body_cursor_col, 0);
     assert_eq!(app.body_scroll, 0);
 }
+
+// Format body JSON tests
+#[test]
+fn test_format_body_json_valid() {
+    let mut app = App::new();
+    app.body_input = vec!["{\"name\":\"test\",\"value\":123}".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 10;
+
+    app.format_body_json();
+
+    assert_eq!(app.body_input.len(), 4);
+    assert_eq!(app.body_input[0], "{");
+    assert_eq!(app.body_input[1], "  \"name\": \"test\",");
+    assert_eq!(app.body_input[2], "  \"value\": 123");
+    assert_eq!(app.body_input[3], "}");
+    assert_eq!(app.body_cursor_line, 0);
+    assert_eq!(app.body_cursor_col, 0);
+}
+
+#[test]
+fn test_format_body_json_multiline_input() {
+    let mut app = App::new();
+    app.body_input = vec!["{\"name\":".to_string(), "\"test\"}".to_string()];
+    app.body_cursor_line = 1;
+    app.body_cursor_col = 5;
+
+    app.format_body_json();
+
+    assert_eq!(app.body_input.len(), 3);
+    assert_eq!(app.body_input[0], "{");
+    assert_eq!(app.body_input[1], "  \"name\": \"test\"");
+    assert_eq!(app.body_input[2], "}");
+    assert_eq!(app.body_cursor_line, 0);
+    assert_eq!(app.body_cursor_col, 0);
+}
+
+#[test]
+fn test_format_body_json_invalid_json() {
+    let mut app = App::new();
+    app.body_input = vec!["{invalid json}".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 5;
+
+    app.format_body_json();
+
+    // Should not change anything for invalid JSON
+    assert_eq!(app.body_input, vec!["{invalid json}".to_string()]);
+    assert_eq!(app.body_cursor_line, 0);
+    assert_eq!(app.body_cursor_col, 5);
+}
+
+#[test]
+fn test_format_body_json_empty() {
+    let mut app = App::new();
+    app.body_input = vec!["".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 0;
+
+    app.format_body_json();
+
+    // Empty string is invalid JSON, should not change
+    assert_eq!(app.body_input, vec!["".to_string()]);
+}
+
+#[test]
+fn test_format_body_json_already_formatted() {
+    let mut app = App::new();
+    app.body_input = vec![
+        "{".to_string(),
+        "  \"name\": \"test\"".to_string(),
+        "}".to_string(),
+    ];
+
+    app.format_body_json();
+
+    // Should still work (re-format)
+    assert_eq!(app.body_input.len(), 3);
+    assert_eq!(app.body_input[0], "{");
+}

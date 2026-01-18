@@ -114,6 +114,14 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
         AppFocus::BodyInput => {
             if !app.loading {
                 match key.code {
+                    KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Insert 2 spaces at cursor (indent)
+                        app.handle_multiline_char(' ', false);
+                        app.handle_multiline_char(' ', false);
+                    }
+                    KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.format_body_json();
+                    }
                     KeyCode::Char(c) => {
                         app.handle_multiline_char(c, false);
                     }

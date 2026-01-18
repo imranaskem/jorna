@@ -394,3 +394,113 @@ fn test_loading_blocks_body_input() {
     // Should not change because loading is true
     assert_eq!(app.body_input[0], "{}");
 }
+
+// Ctrl+T indent tests
+#[test]
+fn test_body_input_ctrl_t_inserts_two_spaces() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["test".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 0;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+    );
+
+    assert_eq!(app.body_input[0], "  test");
+    assert_eq!(app.body_cursor_col, 2);
+}
+
+#[test]
+fn test_body_input_ctrl_t_inserts_at_cursor() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["hello".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 2;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+    );
+
+    assert_eq!(app.body_input[0], "he  llo");
+    assert_eq!(app.body_cursor_col, 4);
+}
+
+// Ctrl+F format JSON tests
+#[test]
+fn test_body_input_ctrl_f_formats_json() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{\"key\":\"value\"}".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 5;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL),
+    );
+
+    assert_eq!(app.body_input.len(), 3);
+    assert_eq!(app.body_input[0], "{");
+    assert_eq!(app.body_input[1], "  \"key\": \"value\"");
+    assert_eq!(app.body_input[2], "}");
+    assert_eq!(app.body_cursor_line, 0);
+    assert_eq!(app.body_cursor_col, 0);
+}
+
+#[test]
+fn test_body_input_ctrl_f_invalid_json_no_change() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["not valid json".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 5;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL),
+    );
+
+    // Should not change anything
+    assert_eq!(app.body_input, vec!["not valid json".to_string()]);
+    assert_eq!(app.body_cursor_line, 0);
+    assert_eq!(app.body_cursor_col, 5);
+}
+
+#[test]
+fn test_body_input_ctrl_i_blocked_when_loading() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["test".to_string()];
+    app.body_cursor_col = 0;
+    app.loading = true;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('i'), KeyModifiers::CONTROL),
+    );
+
+    // Should not change because loading is true
+    assert_eq!(app.body_input[0], "test");
+    assert_eq!(app.body_cursor_col, 0);
+}
+
+#[test]
+fn test_body_input_ctrl_f_blocked_when_loading() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{\"key\":\"value\"}".to_string()];
+    app.loading = true;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL),
+    );
+
+    // Should not format because loading is true
+    assert_eq!(app.body_input, vec!["{\"key\":\"value\"}".to_string()]);
+}

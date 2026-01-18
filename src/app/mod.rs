@@ -331,6 +331,19 @@ impl App {
             *cursor_col += 1;
         }
     }
+
+    pub fn format_body_json(&mut self) {
+        let body_text = self.body_input.join("\n");
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body_text) {
+            if let Ok(formatted) = serde_json::to_string_pretty(&json) {
+                self.body_input = formatted.lines().map(String::from).collect();
+                // Reset cursor to start
+                self.body_cursor_line = 0;
+                self.body_cursor_col = 0;
+            }
+        }
+        // If invalid JSON, do nothing silently
+    }
 }
 
 #[cfg(test)]
