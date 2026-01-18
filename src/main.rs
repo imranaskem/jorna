@@ -13,8 +13,11 @@ use ratatui::{
 };
 use std::io::{self, stdout};
 
+const METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum AppFocus {
+    MethodSelector,
     UrlInput,
     Response,
 }
@@ -27,6 +30,8 @@ struct App {
     loading: bool,
     focus: AppFocus,
     should_quit: bool,
+    http_method: String,
+    method_index: usize,
 }
 
 impl App {
@@ -40,8 +45,10 @@ impl App {
             response: "Response will appear here...".to_string(),
             response_scroll: 0,
             loading: false,
-            focus: AppFocus::UrlInput,
+            focus: AppFocus::MethodSelector,
             should_quit: false,
+            http_method: "GET".to_string(),
+            method_index: 0,
         }
     }
 
@@ -56,8 +63,24 @@ impl App {
         self.response = "Loading...".to_string();
         self.response_scroll = 0;
 
-        // Simple synchronous request - same as original implementation
-        let response_text = match reqwest::blocking::get(&url) {
+        // Simple synchronous request with method selection
+        let client = reqwest::blocking::Client::new();
+        let response_result = match self.http_method.as_str() {
+            "GET" => client.get(&url).send(),
+            "POST" => client.post(&url).send(),
+            "PUT" => client.put(&url).send(),
+            "DELETE" => client.delete(&url).send(),
+            "PATCH" => client.patch(&url).send(),
+            "HEAD" => client.head(&url).send(),
+            "OPTIONS" => client.request(reqwest::Method::OPTIONS, &url).send(),
+            _ => {
+                self.response = "Error: Invalid HTTP method".to_string();
+                self.loading = false;
+                return;
+            }
+        };
+
+        let response_text = match response_result {
             Ok(response) => {
                 let status = response.status();
                 let headers = format!("Status: {}\n\n", status);
@@ -125,18 +148,36 @@ fn ui(frame: &mut Frame, app: &App) {
         .direction(Direction::Vertical)
         .margin(1)
         .constraints([
-            Constraint::Length(3),  // Title
-            Constraint::Length(3),  // URL input
+            Constraint::Length(3),  // Input area (method + URL)
             Constraint::Length(1),  // Instructions
             Constraint::Min(10),    // Response area
         ])
         .split(frame.area());
 
-    // Title
-    let title = Paragraph::new("HTTP Client")
-        .style(Style::default().fg(Color::White))
-        .block(Block::default().borders(Borders::ALL));
-    frame.render_widget(title, chunks[0]);
+    // Split input area horizontally for method selector and URL input
+    let input_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(12),  // Method selector
+            Constraint::Min(20),     // URL input
+        ])
+        .split(chunks[0]);
+
+    // Method selector
+    let method_text = format!(" {} ", app.http_method);
+    let method_widget = Paragraph::new(method_text)
+        .style(Style::default().fg(Color::DarkGray))
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("METHOD")
+                .border_style(if app.focus == AppFocus::MethodSelector {
+                    Style::default().fg(Color::Cyan)
+                } else {
+                    Style::default()
+                }),
+        );
+    frame.render_widget(method_widget, input_chunks[0]);
 
     // URL Input with cursor
     let input_text = if app.focus == AppFocus::UrlInput {
@@ -165,17 +206,21 @@ fn ui(frame: &mut Frame, app: &App) {
                     Style::default()
                 }),
         );
-    frame.render_widget(input_widget, chunks[1]);
+    frame.render_widget(input_widget, input_chunks[1]);
 
     // Instructions
     let instructions = if app.loading {
         "Loading..."
     } else {
-        "Enter: Send | Tab: Switch Focus | ↑↓: Scroll Response | Esc: Quit"
+        match app.focus {
+            AppFocus::MethodSelector => "↑↓: Change Method | Enter: Send | Tab: Next Focus | Esc: Quit",
+            AppFocus::UrlInput => "Enter: Send | Tab: Next Focus | ←→: Move Cursor | Esc: Quit",
+            AppFocus::Response => "↑↓: Scroll Response | Tab: Next Focus | Esc: Quit",
+        }
     };
     let instructions_widget = Paragraph::new(instructions)
         .style(Style::default().fg(Color::DarkGray));
-    frame.render_widget(instructions_widget, chunks[2]);
+    frame.render_widget(instructions_widget, chunks[1]);
 
     // Response
     let response_block = Block::default()
@@ -193,7 +238,7 @@ fn ui(frame: &mut Frame, app: &App) {
         .scroll((app.response_scroll, 0))
         .style(Style::default().fg(Color::DarkGray));
 
-    frame.render_widget(response_widget, chunks[3]);
+    frame.render_widget(response_widget, chunks[2]);
 }
 
 fn handle_key_event(app: &mut App, key: KeyEvent) {
@@ -205,8 +250,9 @@ fn handle_key_event(app: &mut App, key: KeyEvent) {
         }
         KeyCode::Tab => {
             app.focus = match app.focus {
+                AppFocus::MethodSelector => AppFocus::UrlInput,
                 AppFocus::UrlInput => AppFocus::Response,
-                AppFocus::Response => AppFocus::UrlInput,
+                AppFocus::Response => AppFocus::MethodSelector,
             };
             return;
         }
@@ -215,6 +261,32 @@ fn handle_key_event(app: &mut App, key: KeyEvent) {
 
     // Context-specific keybindings
     match app.focus {
+        AppFocus::MethodSelector => {
+            if !app.loading {
+                match key.code {
+                    KeyCode::Up => {
+                        if app.method_index > 0 {
+                            app.method_index -= 1;
+                        } else {
+                            app.method_index = METHODS.len() - 1;
+                        }
+                        app.http_method = METHODS[app.method_index].to_string();
+                    }
+                    KeyCode::Down => {
+                        if app.method_index < METHODS.len() - 1 {
+                            app.method_index += 1;
+                        } else {
+                            app.method_index = 0;
+                        }
+                        app.http_method = METHODS[app.method_index].to_string();
+                    }
+                    KeyCode::Enter => {
+                        app.send_request();
+                    }
+                    _ => {}
+                }
+            }
+        }
         AppFocus::UrlInput => {
             if !app.loading {
                 match key.code {
