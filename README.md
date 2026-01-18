@@ -13,12 +13,21 @@ A terminal-based HTTP client built with Rust and Ratatui. Jorna provides a simpl
 
 ## Installation
 
-### Prerequisites
+### Homebrew (macOS)
+
+```bash
+brew tap imranaskem/jorna
+brew install jorna
+```
+
+### Building from Source
+
+#### Prerequisites
 
 - Rust 1.70 or higher
 - Cargo
 
-### Building from Source
+#### Build Steps
 
 ```bash
 git clone <repository-url>
