@@ -15,8 +15,8 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
             Constraint::Length(3), // Input area (method + URL)
             Constraint::Length(5), // Headers input
             Constraint::Length(8), // Body input
-            Constraint::Length(1), // Instructions
             Constraint::Min(10),   // Response area
+            Constraint::Length(1), // Instructions
         ])
         .split(frame.area());
 
@@ -154,24 +154,6 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .scroll((app.body_scroll, 0));
     frame.render_widget(body_widget, chunks[2]);
 
-    // Instructions
-    let instructions = if app.loading {
-        "Loading..."
-    } else {
-        match app.focus {
-            AppFocus::MethodSelector => {
-                "↑↓: Change Method | Enter: Send | Tab: Next Focus | Esc: Quit"
-            }
-            AppFocus::UrlInput => "Enter: Send | Tab: Next Focus | ←→: Move Cursor | Esc: Quit",
-            AppFocus::HeadersInput => "Type headers | Shift+Enter: New line | Enter: Send | Tab: Next Focus | Esc: Quit",
-            AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Enter: New line | Ctrl+Enter: Send | Tab: Next | Esc: Quit",
-            AppFocus::Response => "↑↓: Scroll Response | Tab: Next Focus | Esc: Quit",
-        }
-    };
-    let instructions_widget =
-        Paragraph::new(instructions).style(Style::default().fg(Color::DarkGray));
-    frame.render_widget(instructions_widget, chunks[3]);
-
     // Response
     let response_block = Block::default()
         .borders(Borders::ALL)
@@ -188,7 +170,25 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .scroll((app.response_scroll, 0))
         .style(Style::default().fg(Color::DarkGray));
 
-    frame.render_widget(response_widget, chunks[4]);
+    frame.render_widget(response_widget, chunks[3]);
+
+    // Instructions
+    let instructions = if app.loading {
+        "Loading..."
+    } else {
+        match app.focus {
+            AppFocus::MethodSelector => {
+                "↑↓: Change Method | Enter: Send | Tab: Next Focus | Esc: Quit"
+            }
+            AppFocus::UrlInput => "Enter: Send | Tab: Next Focus | ←→: Move Cursor | Esc: Quit",
+            AppFocus::HeadersInput => "Type headers | Shift+Enter: New line | Enter: Send | Tab: Next Focus | Esc: Quit",
+            AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Enter: New line | Ctrl+Enter: Send | Tab: Next | Esc: Quit",
+            AppFocus::Response => "↑↓: Scroll Response | Tab: Next Focus | Esc: Quit",
+        }
+    };
+    let instructions_widget =
+        Paragraph::new(instructions).style(Style::default().fg(Color::DarkGray));
+    frame.render_widget(instructions_widget, chunks[4]);
 }
 
 #[cfg(test)]
