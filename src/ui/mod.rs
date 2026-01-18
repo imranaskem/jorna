@@ -36,7 +36,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("METHOD")
+                .title("Method")
                 .border_style(if app.focus == AppFocus::MethodSelector {
                     Style::default().fg(Color::Cyan)
                 } else {
@@ -65,7 +65,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("URL")
+                .title("Url")
                 .border_style(if app.focus == AppFocus::UrlInput {
                     Style::default().fg(Color::Cyan)
                 } else {
@@ -104,7 +104,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("HEADERS (Key: Value per line)")
+                .title("Headers (Key: Value per line)")
                 .border_style(if app.focus == AppFocus::HeadersInput {
                     Style::default().fg(Color::Cyan)
                 } else {
@@ -144,7 +144,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("BODY (JSON)")
+                .title("Body (JSON)")
                 .border_style(if app.focus == AppFocus::BodyInput {
                     Style::default().fg(Color::Cyan)
                 } else {
