@@ -13,6 +13,9 @@ fn test_app_initialization() {
     assert!(!app.should_quit);
     assert_eq!(app.http_method, "GET");
     assert_eq!(app.method_index, 0);
+    assert!(app.response_time.is_none());
+    assert!(app.status_code.is_none());
+    assert!(app.response_size.is_none());
 }
 
 #[test]
@@ -596,4 +599,66 @@ fn test_format_body_json_already_formatted() {
     // Should still work (re-format)
     assert_eq!(app.body_input.len(), 3);
     assert_eq!(app.body_input[0], "{");
+}
+
+// Response metadata tests
+#[test]
+fn test_send_request_clears_metadata_before_request() {
+    let mut app = App::new();
+    // Set some previous metadata
+    app.response_time = Some(std::time::Duration::from_millis(100));
+    app.status_code = Some(200);
+    app.response_size = Some(1024);
+
+    // Use empty URL to trigger early return
+    app.url_input = "".to_string();
+    app.send_request();
+
+    // Metadata should remain unchanged since we returned early before clearing
+    assert!(app.response_time.is_some());
+}
+
+#[test]
+fn test_send_request_populates_metadata_on_success() {
+    let mut app = App::new();
+    app.url_input = "https://httpbin.org/get".to_string();
+
+    app.send_request();
+
+    // After successful request, metadata should be populated
+    assert!(app.response_time.is_some());
+    assert!(app.status_code.is_some());
+    assert!(app.response_size.is_some());
+    assert_eq!(app.status_code, Some(200));
+}
+
+#[test]
+fn test_send_request_metadata_cleared_before_new_request() {
+    let mut app = App::new();
+    // Set some previous metadata
+    app.response_time = Some(std::time::Duration::from_millis(100));
+    app.status_code = Some(404);
+    app.response_size = Some(50);
+    app.url_input = "https://httpbin.org/get".to_string();
+
+    app.send_request();
+
+    // After new request, old metadata should be replaced
+    assert!(app.status_code.is_some());
+    assert_eq!(app.status_code, Some(200));
+}
+
+#[test]
+fn test_send_request_invalid_json_clears_metadata() {
+    let mut app = App::new();
+    app.url_input = "https://httpbin.org/post".to_string();
+    app.http_method = "POST".to_string();
+    app.body_input = vec!["{invalid json}".to_string()];
+
+    app.send_request();
+
+    // JSON validation fails early, metadata should be None
+    assert!(app.response_time.is_none());
+    assert!(app.status_code.is_none());
+    assert!(app.response_size.is_none());
 }

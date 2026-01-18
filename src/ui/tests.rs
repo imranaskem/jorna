@@ -363,3 +363,96 @@ fn test_ui_renders_all_focus_states() {
             .unwrap_or_else(|_| panic!("UI should render with focus state {:?}", focus));
     }
 }
+
+// Status line tests
+#[test]
+fn test_ui_renders_status_line_empty_initially() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+
+    // No response metadata set
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with empty status line");
+}
+
+#[test]
+fn test_ui_renders_status_line_with_metadata() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.status_code = Some(200);
+    app.response_time = Some(std::time::Duration::from_millis(150));
+    app.response_size = Some(1024);
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with status line metadata");
+}
+
+#[test]
+fn test_ui_renders_status_line_loading() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.loading = true;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with loading status line");
+}
+
+#[test]
+fn test_ui_renders_status_line_with_large_response_time() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.status_code = Some(200);
+    app.response_time = Some(std::time::Duration::from_millis(2500));
+    app.response_size = Some(500);
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with large response time (seconds format)");
+}
+
+#[test]
+fn test_ui_renders_status_line_with_large_response_size() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.status_code = Some(200);
+    app.response_time = Some(std::time::Duration::from_millis(100));
+    app.response_size = Some(2 * 1024 * 1024); // 2MB
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with large response size (MB format)");
+}
+
+#[test]
+fn test_ui_renders_status_line_with_error_status() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.status_code = Some(404);
+    app.response_time = Some(std::time::Duration::from_millis(50));
+    app.response_size = Some(100);
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with error status code");
+}
+
+#[test]
+fn test_ui_renders_status_line_with_only_status_code() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.status_code = Some(200);
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with only status code");
+}

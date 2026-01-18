@@ -15,6 +15,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
             Constraint::Length(3), // Input area (method + URL)
             Constraint::Length(5), // Headers input
             Constraint::Length(8), // Body input
+            Constraint::Length(1), // Status line
             Constraint::Min(10),   // Response area
             Constraint::Length(1), // Instructions
         ])
@@ -154,6 +155,35 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .scroll((app.body_scroll, 0));
     frame.render_widget(body_widget, chunks[2]);
 
+    // Status line
+    let status_text = if app.loading {
+        "Loading...".to_string()
+    } else if let Some(status_code) = app.status_code {
+        let mut parts = vec![format!("Status: {}", status_code)];
+        if let Some(duration) = app.response_time {
+            let ms = duration.as_millis();
+            if ms >= 1000 {
+                parts.push(format!("Time: {:.2}s", duration.as_secs_f64()));
+            } else {
+                parts.push(format!("Time: {}ms", ms));
+            }
+        }
+        if let Some(size) = app.response_size {
+            if size >= 1024 * 1024 {
+                parts.push(format!("Size: {:.2}MB", size as f64 / (1024.0 * 1024.0)));
+            } else if size >= 1024 {
+                parts.push(format!("Size: {:.2}KB", size as f64 / 1024.0));
+            } else {
+                parts.push(format!("Size: {}B", size));
+            }
+        }
+        parts.join(" │ ")
+    } else {
+        String::new()
+    };
+    let status_widget = Paragraph::new(status_text).style(Style::default().fg(Color::DarkGray));
+    frame.render_widget(status_widget, chunks[3]);
+
     // Response
     let response_block = Block::default()
         .borders(Borders::ALL)
@@ -170,7 +200,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         .scroll((app.response_scroll, 0))
         .style(Style::default().fg(Color::DarkGray));
 
-    frame.render_widget(response_widget, chunks[3]);
+    frame.render_widget(response_widget, chunks[4]);
 
     // Instructions
     let instructions = if app.loading {
@@ -188,7 +218,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     };
     let instructions_widget =
         Paragraph::new(instructions).style(Style::default().fg(Color::DarkGray));
-    frame.render_widget(instructions_widget, chunks[4]);
+    frame.render_widget(instructions_widget, chunks[5]);
 }
 
 #[cfg(test)]

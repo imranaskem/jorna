@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 pub const METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -28,6 +30,9 @@ pub struct App {
     pub body_cursor_line: usize,
     pub body_cursor_col: usize,
     pub body_scroll: u16,
+    pub response_time: Option<Duration>,
+    pub status_code: Option<u16>,
+    pub response_size: Option<usize>,
 }
 
 impl App {
@@ -53,6 +58,9 @@ impl App {
             body_cursor_line: 0,
             body_cursor_col: 0,
             body_scroll: 0,
+            response_time: None,
+            status_code: None,
+            response_size: None,
         }
     }
 
@@ -66,6 +74,9 @@ impl App {
         self.loading = true;
         self.response = "Loading...".to_string();
         self.response_scroll = 0;
+        self.response_time = None;
+        self.status_code = None;
+        self.response_size = None;
 
         // Parse headers from headers_input
         let headers: Vec<(String, String)> = self
@@ -121,22 +132,24 @@ impl App {
         }
 
         // Send request
+        let start = Instant::now();
         let response_result = request.send();
+        let elapsed = start.elapsed();
 
         let response_text = match response_result {
             Ok(response) => {
                 let status = response.status();
-                let headers = format!("Status: {}\n\n", status);
+                self.status_code = Some(status.as_u16());
+                self.response_time = Some(elapsed);
                 match response.text() {
                     Ok(body) => {
+                        self.response_size = Some(body.len());
                         // Try to parse and pretty-print JSON
-                        let formatted_body =
-                            if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
-                                serde_json::to_string_pretty(&json).unwrap_or(body)
-                            } else {
-                                body
-                            };
-                        format!("{}{}", headers, formatted_body)
+                        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) {
+                            serde_json::to_string_pretty(&json).unwrap_or(body)
+                        } else {
+                            body
+                        }
                     }
                     Err(e) => format!("Error reading response: {}", e),
                 }
