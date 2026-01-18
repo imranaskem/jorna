@@ -1,5 +1,5 @@
 use crate::app::{App, AppFocus, METHODS};
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
     // Global keybindings
@@ -11,7 +11,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
         KeyCode::Tab => {
             app.focus = match app.focus {
                 AppFocus::MethodSelector => AppFocus::UrlInput,
-                AppFocus::UrlInput => AppFocus::Response,
+                AppFocus::UrlInput => AppFocus::HeadersInput,
+                AppFocus::HeadersInput => AppFocus::BodyInput,
+                AppFocus::BodyInput => AppFocus::Response,
                 AppFocus::Response => AppFocus::MethodSelector,
             };
             return;
@@ -73,6 +75,74 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                     }
                     KeyCode::End => {
                         app.move_cursor_to_end();
+                    }
+                    _ => {}
+                }
+            }
+        }
+        AppFocus::HeadersInput => {
+            if !app.loading {
+                match key.code {
+                    KeyCode::Char(c) => {
+                        app.handle_multiline_char(c, true);
+                    }
+                    KeyCode::Backspace => {
+                        app.handle_multiline_backspace(true);
+                    }
+                    KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                        app.handle_multiline_enter(true);
+                    }
+                    KeyCode::Enter => {
+                        app.send_request();
+                    }
+                    KeyCode::Up => {
+                        app.handle_multiline_up(true);
+                    }
+                    KeyCode::Down => {
+                        app.handle_multiline_down(true);
+                    }
+                    KeyCode::Left => {
+                        app.handle_multiline_left(true);
+                    }
+                    KeyCode::Right => {
+                        app.handle_multiline_right(true);
+                    }
+                    _ => {}
+                }
+            }
+        }
+        AppFocus::BodyInput => {
+            if !app.loading {
+                match key.code {
+                    KeyCode::Char(c) => {
+                        app.handle_multiline_char(c, false);
+                    }
+                    KeyCode::Backspace => {
+                        app.handle_multiline_backspace(false);
+                    }
+                    KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
+                        app.handle_multiline_enter(false);
+                    }
+                    KeyCode::Enter
+                        if key.modifiers.contains(KeyModifiers::CONTROL)
+                            || key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        app.send_request();
+                    }
+                    KeyCode::Enter => {
+                        app.handle_multiline_enter(false);
+                    }
+                    KeyCode::Up => {
+                        app.handle_multiline_up(false);
+                    }
+                    KeyCode::Down => {
+                        app.handle_multiline_down(false);
+                    }
+                    KeyCode::Left => {
+                        app.handle_multiline_left(false);
+                    }
+                    KeyCode::Right => {
+                        app.handle_multiline_right(false);
                     }
                     _ => {}
                 }

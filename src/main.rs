@@ -19,7 +19,7 @@ fn run_app(
     mut app: App,
 ) -> io::Result<()> {
     loop {
-        terminal.draw(|f| ui(f, &app))?;
+        terminal.draw(|f| ui(f, &mut app))?;
 
         if app.should_quit {
             break;

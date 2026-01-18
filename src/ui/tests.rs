@@ -5,10 +5,10 @@ use ratatui::{backend::TestBackend, Terminal};
 fn test_ui_renders_without_panic() {
     let backend = TestBackend::new(80, 24);
     let mut terminal = Terminal::new(backend).unwrap();
-    let app = App::new();
+    let mut app = App::new();
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render without error");
 }
 
@@ -20,7 +20,7 @@ fn test_ui_renders_with_method_selector_focused() {
     app.focus = AppFocus::MethodSelector;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with method selector focused");
 }
 
@@ -32,7 +32,7 @@ fn test_ui_renders_with_url_input_focused() {
     app.focus = AppFocus::UrlInput;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with URL input focused");
 }
 
@@ -44,7 +44,7 @@ fn test_ui_renders_with_response_focused() {
     app.focus = AppFocus::Response;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with response focused");
 }
 
@@ -56,7 +56,7 @@ fn test_ui_renders_while_loading() {
     app.loading = true;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render while loading");
 }
 
@@ -70,7 +70,7 @@ fn test_ui_renders_with_different_methods() {
         app.http_method = method.to_string();
 
         terminal
-            .draw(|f| ui(f, &app))
+            .draw(|f| ui(f, &mut app))
             .unwrap_or_else(|_| panic!("UI should render with {} method", method));
     }
 }
@@ -84,7 +84,7 @@ fn test_ui_renders_with_empty_url() {
     app.cursor_position = 0;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with empty URL");
 }
 
@@ -98,7 +98,7 @@ fn test_ui_renders_with_long_url() {
     app.cursor_position = app.url_input.len();
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with long URL");
 }
 
@@ -110,7 +110,7 @@ fn test_ui_renders_with_long_response() {
     app.response = "Line 1\n".repeat(100);
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with long response");
 }
 
@@ -123,7 +123,7 @@ fn test_ui_renders_with_scroll_offset() {
     app.response_scroll = 50;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with scroll offset");
 }
 
@@ -137,7 +137,7 @@ fn test_ui_renders_with_cursor_at_start() {
     app.cursor_position = 0;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with cursor at start");
 }
 
@@ -151,7 +151,7 @@ fn test_ui_renders_with_cursor_in_middle() {
     app.cursor_position = 10;
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render with cursor in middle");
 }
 
@@ -159,10 +159,10 @@ fn test_ui_renders_with_cursor_in_middle() {
 fn test_ui_renders_with_small_terminal() {
     let backend = TestBackend::new(40, 12);
     let mut terminal = Terminal::new(backend).unwrap();
-    let app = App::new();
+    let mut app = App::new();
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render in small terminal");
 }
 
@@ -170,10 +170,10 @@ fn test_ui_renders_with_small_terminal() {
 fn test_ui_renders_with_large_terminal() {
     let backend = TestBackend::new(200, 60);
     let mut terminal = Terminal::new(backend).unwrap();
-    let app = App::new();
+    let mut app = App::new();
 
     terminal
-        .draw(|f| ui(f, &app))
+        .draw(|f| ui(f, &mut app))
         .expect("UI should render in large terminal");
 }
 
@@ -188,7 +188,178 @@ fn test_ui_renders_all_http_methods() {
         app.http_method = method.to_string();
 
         terminal
-            .draw(|f| ui(f, &app))
+            .draw(|f| ui(f, &mut app))
             .unwrap_or_else(|_| panic!("UI should render with method index {}", index));
+    }
+}
+
+// Headers and Body widget rendering tests
+#[test]
+fn test_ui_renders_with_headers_focused() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with headers input focused");
+}
+
+#[test]
+fn test_ui_renders_with_body_focused() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with body input focused");
+}
+
+#[test]
+fn test_ui_renders_with_headers_content() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.headers_input = vec![
+        "Content-Type: application/json".to_string(),
+        "Authorization: Bearer token123".to_string(),
+    ];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with headers content");
+}
+
+#[test]
+fn test_ui_renders_with_body_content() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.body_input = vec![
+        "{".to_string(),
+        "  \"name\": \"test\",".to_string(),
+        "  \"value\": 123".to_string(),
+        "}".to_string(),
+    ];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with body content");
+}
+
+#[test]
+fn test_ui_renders_headers_with_cursor() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["Content".to_string()];
+    app.headers_cursor_line = 0;
+    app.headers_cursor_col = 3;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render headers with cursor");
+}
+
+#[test]
+fn test_ui_renders_body_with_cursor() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{}".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 1;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render body with cursor");
+}
+
+#[test]
+fn test_ui_renders_with_multiline_headers() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.headers_input = vec![
+        "Header1: value1".to_string(),
+        "Header2: value2".to_string(),
+        "Header3: value3".to_string(),
+        "Header4: value4".to_string(),
+    ];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with multiple header lines");
+}
+
+#[test]
+fn test_ui_renders_with_multiline_body() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.body_input = vec![
+        "{".to_string(),
+        "  \"field1\": \"value1\",".to_string(),
+        "  \"field2\": \"value2\",".to_string(),
+        "  \"nested\": {".to_string(),
+        "    \"key\": \"value\"".to_string(),
+        "  }".to_string(),
+        "}".to_string(),
+    ];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with multiple body lines");
+}
+
+#[test]
+fn test_ui_renders_with_empty_headers() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.headers_input = vec!["".to_string()];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with empty headers");
+}
+
+#[test]
+fn test_ui_renders_with_empty_body() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.body_input = vec!["".to_string()];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with empty body");
+}
+
+#[test]
+fn test_ui_renders_all_focus_states() {
+    let backend = TestBackend::new(80, 24);
+    let mut terminal = Terminal::new(backend).unwrap();
+
+    let focus_states = vec![
+        AppFocus::MethodSelector,
+        AppFocus::UrlInput,
+        AppFocus::HeadersInput,
+        AppFocus::BodyInput,
+        AppFocus::Response,
+    ];
+
+    for focus in focus_states {
+        let mut app = App::new();
+        app.focus = focus;
+
+        terminal
+            .draw(|f| ui(f, &mut app))
+            .unwrap_or_else(|_| panic!("UI should render with focus state {:?}", focus));
     }
 }

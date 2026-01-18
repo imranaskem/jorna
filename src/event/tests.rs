@@ -24,6 +24,12 @@ fn test_tab_cycles_focus() {
     assert_eq!(app.focus, AppFocus::UrlInput);
 
     handle_key_event(&mut app, create_key_event(KeyCode::Tab));
+    assert_eq!(app.focus, AppFocus::HeadersInput);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Tab));
+    assert_eq!(app.focus, AppFocus::BodyInput);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Tab));
     assert_eq!(app.focus, AppFocus::Response);
 
     handle_key_event(&mut app, create_key_event(KeyCode::Tab));
@@ -180,4 +186,208 @@ fn test_loading_blocks_method_change() {
     // Should not change because loading is true
     assert_eq!(app.method_index, 0);
     assert_eq!(app.http_method, "GET");
+}
+
+// Headers input tests
+#[test]
+fn test_headers_input_char() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["".to_string()];
+    app.headers_cursor_line = 0;
+    app.headers_cursor_col = 0;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('C')));
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('o')));
+
+    assert_eq!(app.headers_input[0], "Co");
+    assert_eq!(app.headers_cursor_col, 2);
+}
+
+#[test]
+fn test_headers_input_backspace() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["Content".to_string()];
+    app.headers_cursor_line = 0;
+    app.headers_cursor_col = 7;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Backspace));
+
+    assert_eq!(app.headers_input[0], "Conten");
+    assert_eq!(app.headers_cursor_col, 6);
+}
+
+#[test]
+fn test_headers_input_enter_sends_request() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.url_input = "https://httpbin.org/get".to_string();
+    app.headers_input = vec!["Content-Type: application/json".to_string()];
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Enter));
+
+    // Enter without modifiers should send request
+    assert!(!app.response.is_empty());
+}
+
+#[test]
+fn test_headers_input_shift_enter_new_line() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["First".to_string()];
+    app.headers_cursor_line = 0;
+    app.headers_cursor_col = 5;
+
+    handle_key_event(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::SHIFT));
+
+    assert_eq!(app.headers_input.len(), 2);
+    assert_eq!(app.headers_input[0], "First");
+    assert_eq!(app.headers_input[1], "");
+    assert_eq!(app.headers_cursor_line, 1);
+}
+
+#[test]
+fn test_headers_input_arrow_keys() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["First".to_string(), "Second".to_string()];
+    app.headers_cursor_line = 0;
+    app.headers_cursor_col = 5;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Down));
+    assert_eq!(app.headers_cursor_line, 1);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Up));
+    assert_eq!(app.headers_cursor_line, 0);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Left));
+    assert_eq!(app.headers_cursor_col, 4);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Right));
+    assert_eq!(app.headers_cursor_col, 5);
+}
+
+#[test]
+fn test_loading_blocks_headers_input() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["Content".to_string()];
+    app.headers_cursor_col = 7;
+    app.loading = true;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('X')));
+
+    // Should not change because loading is true
+    assert_eq!(app.headers_input[0], "Content");
+}
+
+// Body input tests
+#[test]
+fn test_body_input_char() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 0;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('{')));
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('}')));
+
+    assert_eq!(app.body_input[0], "{}");
+    assert_eq!(app.body_cursor_col, 2);
+}
+
+#[test]
+fn test_body_input_backspace() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{ }".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 2;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Backspace));
+
+    assert_eq!(app.body_input[0], "{}");
+    assert_eq!(app.body_cursor_col, 1);
+}
+
+#[test]
+fn test_body_input_enter_new_line() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 1;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Enter));
+
+    // Regular Enter should create new line in body
+    assert_eq!(app.body_input.len(), 2);
+    assert_eq!(app.body_input[0], "{");
+    assert_eq!(app.body_input[1], "");
+}
+
+#[test]
+fn test_body_input_ctrl_enter_sends_request() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.url_input = "https://httpbin.org/post".to_string();
+    app.http_method = "POST".to_string();
+    app.body_input = vec!["{}".to_string()];
+
+    handle_key_event(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL));
+
+    // Ctrl+Enter should send request
+    assert!(!app.response.is_empty());
+}
+
+#[test]
+fn test_body_input_shift_enter_new_line() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["test".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 4;
+
+    handle_key_event(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::SHIFT));
+
+    assert_eq!(app.body_input.len(), 2);
+    assert_eq!(app.body_input[0], "test");
+    assert_eq!(app.body_input[1], "");
+}
+
+#[test]
+fn test_body_input_arrow_keys() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{".to_string(), "}".to_string()];
+    app.body_cursor_line = 0;
+    app.body_cursor_col = 1;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Down));
+    assert_eq!(app.body_cursor_line, 1);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Up));
+    assert_eq!(app.body_cursor_line, 0);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Left));
+    assert_eq!(app.body_cursor_col, 0);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Right));
+    assert_eq!(app.body_cursor_col, 1);
+}
+
+#[test]
+fn test_loading_blocks_body_input() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.body_input = vec!["{}".to_string()];
+    app.body_cursor_col = 2;
+    app.loading = true;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('x')));
+
+    // Should not change because loading is true
+    assert_eq!(app.body_input[0], "{}");
 }

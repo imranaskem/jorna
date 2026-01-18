@@ -4,9 +4,12 @@ pub const METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", 
 pub enum AppFocus {
     MethodSelector,
     UrlInput,
+    HeadersInput,
+    BodyInput,
     Response,
 }
 
+#[derive(Clone)]
 pub struct App {
     pub url_input: String,
     pub cursor_position: usize,
@@ -17,6 +20,14 @@ pub struct App {
     pub should_quit: bool,
     pub http_method: String,
     pub method_index: usize,
+    pub headers_input: Vec<String>,
+    pub headers_cursor_line: usize,
+    pub headers_cursor_col: usize,
+    pub headers_scroll: u16,
+    pub body_input: Vec<String>,
+    pub body_cursor_line: usize,
+    pub body_cursor_col: usize,
+    pub body_scroll: u16,
 }
 
 impl App {
@@ -27,13 +38,21 @@ impl App {
         Self {
             url_input: default_url,
             cursor_position: cursor_pos,
-            response: "Response will appear here...".to_string(),
+            response: "{}".to_string(),
             response_scroll: 0,
             loading: false,
             focus: AppFocus::MethodSelector,
             should_quit: false,
             http_method: "GET".to_string(),
             method_index: 0,
+            headers_input: vec![String::new()],
+            headers_cursor_line: 0,
+            headers_cursor_col: 0,
+            headers_scroll: 0,
+            body_input: vec![String::new()],
+            body_cursor_line: 0,
+            body_cursor_col: 0,
+            body_scroll: 0,
         }
     }
 
@@ -48,22 +67,61 @@ impl App {
         self.response = "Loading...".to_string();
         self.response_scroll = 0;
 
-        // Simple synchronous request with method selection
+        // Parse headers from headers_input
+        let headers: Vec<(String, String)> = self
+            .headers_input
+            .iter()
+            .filter_map(|line| {
+                let parts: Vec<&str> = line.splitn(2, ": ").collect();
+                if parts.len() == 2 {
+                    Some((parts[0].trim().to_string(), parts[1].trim().to_string()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Get body text from body_input
+        let body_text = self.body_input.join("\n").trim().to_string();
+
+        // Validate JSON if body is not empty
+        if !body_text.is_empty() {
+            if let Err(e) = serde_json::from_str::<serde_json::Value>(&body_text) {
+                self.response = format!("Error: Invalid JSON in body: {}", e);
+                self.loading = false;
+                return;
+            }
+        }
+
+        // Build request with method
         let client = reqwest::blocking::Client::new();
-        let response_result = match self.http_method.as_str() {
-            "GET" => client.get(&url).send(),
-            "POST" => client.post(&url).send(),
-            "PUT" => client.put(&url).send(),
-            "DELETE" => client.delete(&url).send(),
-            "PATCH" => client.patch(&url).send(),
-            "HEAD" => client.head(&url).send(),
-            "OPTIONS" => client.request(reqwest::Method::OPTIONS, &url).send(),
+        let mut request = match self.http_method.as_str() {
+            "GET" => client.get(&url),
+            "POST" => client.post(&url),
+            "PUT" => client.put(&url),
+            "DELETE" => client.delete(&url),
+            "PATCH" => client.patch(&url),
+            "HEAD" => client.head(&url),
+            "OPTIONS" => client.request(reqwest::Method::OPTIONS, &url),
             _ => {
                 self.response = "Error: Invalid HTTP method".to_string();
                 self.loading = false;
                 return;
             }
         };
+
+        // Add headers
+        for (key, value) in headers {
+            request = request.header(key, value);
+        }
+
+        // Add body if present
+        if !body_text.is_empty() {
+            request = request.body(body_text);
+        }
+
+        // Send request
+        let response_result = request.send();
 
         let response_text = match response_result {
             Ok(response) => {
@@ -126,6 +184,104 @@ impl App {
 
     pub fn move_cursor_to_end(&mut self) {
         self.cursor_position = self.url_input.len();
+    }
+
+    // Multi-line text input helpers
+    pub fn handle_multiline_char(&mut self, c: char, is_headers: bool) {
+        let (lines, cursor_line, cursor_col) = if is_headers {
+            (&mut self.headers_input, &mut self.headers_cursor_line, &mut self.headers_cursor_col)
+        } else {
+            (&mut self.body_input, &mut self.body_cursor_line, &mut self.body_cursor_col)
+        };
+
+        if *cursor_line >= lines.len() {
+            lines.push(String::new());
+            *cursor_line = lines.len() - 1;
+        }
+
+        lines[*cursor_line].insert(*cursor_col, c);
+        *cursor_col += 1;
+    }
+
+    pub fn handle_multiline_backspace(&mut self, is_headers: bool) {
+        let (lines, cursor_line, cursor_col) = if is_headers {
+            (&mut self.headers_input, &mut self.headers_cursor_line, &mut self.headers_cursor_col)
+        } else {
+            (&mut self.body_input, &mut self.body_cursor_line, &mut self.body_cursor_col)
+        };
+
+        if *cursor_col > 0 {
+            *cursor_col -= 1;
+            lines[*cursor_line].remove(*cursor_col);
+        } else if *cursor_line > 0 {
+            let current_line = lines.remove(*cursor_line);
+            *cursor_line -= 1;
+            *cursor_col = lines[*cursor_line].len();
+            lines[*cursor_line].push_str(&current_line);
+        }
+    }
+
+    pub fn handle_multiline_enter(&mut self, is_headers: bool) {
+        let (lines, cursor_line, cursor_col) = if is_headers {
+            (&mut self.headers_input, &mut self.headers_cursor_line, &mut self.headers_cursor_col)
+        } else {
+            (&mut self.body_input, &mut self.body_cursor_line, &mut self.body_cursor_col)
+        };
+
+        let rest = lines[*cursor_line].split_off(*cursor_col);
+        *cursor_line += 1;
+        lines.insert(*cursor_line, rest);
+        *cursor_col = 0;
+    }
+
+    pub fn handle_multiline_up(&mut self, is_headers: bool) {
+        let (cursor_line, cursor_col, lines) = if is_headers {
+            (&mut self.headers_cursor_line, &mut self.headers_cursor_col, &self.headers_input)
+        } else {
+            (&mut self.body_cursor_line, &mut self.body_cursor_col, &self.body_input)
+        };
+
+        if *cursor_line > 0 {
+            *cursor_line -= 1;
+            *cursor_col = (*cursor_col).min(lines[*cursor_line].len());
+        }
+    }
+
+    pub fn handle_multiline_down(&mut self, is_headers: bool) {
+        let (cursor_line, cursor_col, lines) = if is_headers {
+            (&mut self.headers_cursor_line, &mut self.headers_cursor_col, &self.headers_input)
+        } else {
+            (&mut self.body_cursor_line, &mut self.body_cursor_col, &self.body_input)
+        };
+
+        if *cursor_line + 1 < lines.len() {
+            *cursor_line += 1;
+            *cursor_col = (*cursor_col).min(lines[*cursor_line].len());
+        }
+    }
+
+    pub fn handle_multiline_left(&mut self, is_headers: bool) {
+        let cursor_col = if is_headers {
+            &mut self.headers_cursor_col
+        } else {
+            &mut self.body_cursor_col
+        };
+
+        if *cursor_col > 0 {
+            *cursor_col -= 1;
+        }
+    }
+
+    pub fn handle_multiline_right(&mut self, is_headers: bool) {
+        let (cursor_line, cursor_col, lines) = if is_headers {
+            (&self.headers_cursor_line, &mut self.headers_cursor_col, &self.headers_input)
+        } else {
+            (&self.body_cursor_line, &mut self.body_cursor_col, &self.body_input)
+        };
+
+        if *cursor_col < lines[*cursor_line].len() {
+            *cursor_col += 1;
+        }
     }
 }
 
