@@ -208,12 +208,12 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     } else {
         match app.focus {
             AppFocus::MethodSelector => {
-                "↑↓: Change Method | Enter: Send | Tab: Next Focus | Esc: Quit"
+                "↑↓: Change Method | Enter: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit"
             }
-            AppFocus::UrlInput => "Enter: Send | Tab: Next Focus | ←→: Move Cursor | Esc: Quit",
-            AppFocus::HeadersInput => "Type headers | Shift+Enter: New line | Enter: Send | Tab: Next Focus | Esc: Quit",
-            AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Enter: New line | Ctrl+Enter: Send | Tab: Next | Esc: Quit",
-            AppFocus::Response => "↑↓: Scroll Response | Tab: Next Focus | Esc: Quit",
+            AppFocus::UrlInput => "Enter: Send | Tab/Shift+Tab: Switch Focus | ←→: Move Cursor | Esc: Quit",
+            AppFocus::HeadersInput => "Shift+Enter: New line | Enter: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
+            AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
+            AppFocus::Response => "↑↓: Scroll | Tab/Shift+Tab: Switch Focus | Esc: Quit",
         }
     };
     let instructions_widget =

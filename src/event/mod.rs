@@ -18,6 +18,16 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
             };
             return;
         }
+        KeyCode::BackTab => {
+            app.focus = match app.focus {
+                AppFocus::MethodSelector => AppFocus::Response,
+                AppFocus::UrlInput => AppFocus::MethodSelector,
+                AppFocus::HeadersInput => AppFocus::UrlInput,
+                AppFocus::BodyInput => AppFocus::HeadersInput,
+                AppFocus::Response => AppFocus::BodyInput,
+            };
+            return;
+        }
         _ => {}
     }
 
@@ -121,6 +131,9 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                     }
                     KeyCode::Char('f') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                         app.format_body_json();
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.send_request();
                     }
                     KeyCode::Char(c) => {
                         app.handle_multiline_char(c, false);

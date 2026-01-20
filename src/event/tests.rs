@@ -346,6 +346,23 @@ fn test_body_input_ctrl_enter_sends_request() {
 }
 
 #[test]
+fn test_body_input_ctrl_s_sends_request() {
+    let mut app = App::new();
+    app.focus = AppFocus::BodyInput;
+    app.url_input = "https://httpbin.org/post".to_string();
+    app.http_method = "POST".to_string();
+    app.body_input = vec!["{}".to_string()];
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL),
+    );
+
+    // Ctrl+S should send request
+    assert!(!app.response.is_empty());
+}
+
+#[test]
 fn test_body_input_shift_enter_new_line() {
     let mut app = App::new();
     app.focus = AppFocus::BodyInput;
