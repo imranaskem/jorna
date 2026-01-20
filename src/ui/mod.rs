@@ -211,7 +211,7 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
                 "↑↓: Change Method | Enter: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit"
             }
             AppFocus::UrlInput => "Enter: Send | Tab/Shift+Tab: Switch Focus | ←→: Move Cursor | Esc: Quit",
-            AppFocus::HeadersInput => "Shift+Enter: New line | Enter: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
+            AppFocus::HeadersInput => "Ctrl+T: Indent | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
             AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
             AppFocus::Response => "↑↓: Scroll | Tab/Shift+Tab: Switch Focus | Esc: Quit",
         }

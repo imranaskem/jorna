@@ -219,32 +219,69 @@ fn test_headers_input_backspace() {
 }
 
 #[test]
-fn test_headers_input_enter_sends_request() {
-    let mut app = App::new();
-    app.focus = AppFocus::HeadersInput;
-    app.url_input = "https://httpbin.org/get".to_string();
-    app.headers_input = vec!["Content-Type: application/json".to_string()];
-
-    handle_key_event(&mut app, create_key_event(KeyCode::Enter));
-
-    // Enter without modifiers should send request
-    assert!(!app.response.is_empty());
-}
-
-#[test]
-fn test_headers_input_shift_enter_new_line() {
+fn test_headers_input_enter_new_line() {
     let mut app = App::new();
     app.focus = AppFocus::HeadersInput;
     app.headers_input = vec!["First".to_string()];
     app.headers_cursor_line = 0;
     app.headers_cursor_col = 5;
 
-    handle_key_event(&mut app, KeyEvent::new(KeyCode::Enter, KeyModifiers::SHIFT));
+    handle_key_event(&mut app, create_key_event(KeyCode::Enter));
 
+    // Regular Enter should create new line in headers
     assert_eq!(app.headers_input.len(), 2);
     assert_eq!(app.headers_input[0], "First");
     assert_eq!(app.headers_input[1], "");
     assert_eq!(app.headers_cursor_line, 1);
+}
+
+#[test]
+fn test_headers_input_ctrl_s_sends_request() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.url_input = "https://httpbin.org/get".to_string();
+    app.headers_input = vec!["Content-Type: application/json".to_string()];
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('s'), KeyModifiers::CONTROL),
+    );
+
+    // Ctrl+S should send request
+    assert!(!app.response.is_empty());
+}
+
+#[test]
+fn test_headers_input_ctrl_enter_sends_request() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.url_input = "https://httpbin.org/get".to_string();
+    app.headers_input = vec!["Content-Type: application/json".to_string()];
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Enter, KeyModifiers::CONTROL),
+    );
+
+    // Ctrl+Enter should send request
+    assert!(!app.response.is_empty());
+}
+
+#[test]
+fn test_headers_input_ctrl_t_inserts_two_spaces() {
+    let mut app = App::new();
+    app.focus = AppFocus::HeadersInput;
+    app.headers_input = vec!["test".to_string()];
+    app.headers_cursor_line = 0;
+    app.headers_cursor_col = 0;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('t'), KeyModifiers::CONTROL),
+    );
+
+    assert_eq!(app.headers_input[0], "  test");
+    assert_eq!(app.headers_cursor_col, 2);
 }
 
 #[test]

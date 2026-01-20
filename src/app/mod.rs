@@ -345,6 +345,30 @@ impl App {
         }
     }
 
+    pub fn ensure_body_cursor_visible(&mut self, visible_lines: usize) {
+        if visible_lines == 0 {
+            return;
+        }
+        let scroll = self.body_scroll as usize;
+        if self.body_cursor_line < scroll {
+            self.body_scroll = self.body_cursor_line as u16;
+        } else if self.body_cursor_line >= scroll + visible_lines {
+            self.body_scroll = (self.body_cursor_line - visible_lines + 1) as u16;
+        }
+    }
+
+    pub fn ensure_headers_cursor_visible(&mut self, visible_lines: usize) {
+        if visible_lines == 0 {
+            return;
+        }
+        let scroll = self.headers_scroll as usize;
+        if self.headers_cursor_line < scroll {
+            self.headers_scroll = self.headers_cursor_line as u16;
+        } else if self.headers_cursor_line >= scroll + visible_lines {
+            self.headers_scroll = (self.headers_cursor_line - visible_lines + 1) as u16;
+        }
+    }
+
     pub fn format_body_json(&mut self) {
         let body_text = self.body_input.join("\n");
         if let Ok(json) = serde_json::from_str::<serde_json::Value>(&body_text) {

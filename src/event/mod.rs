@@ -93,23 +93,38 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
         AppFocus::HeadersInput => {
             if !app.loading {
                 match key.code {
+                    KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        // Insert 2 spaces at cursor (indent)
+                        app.handle_multiline_char(' ', true);
+                        app.handle_multiline_char(' ', true);
+                    }
+                    KeyCode::Char('s') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        app.send_request();
+                    }
                     KeyCode::Char(c) => {
                         app.handle_multiline_char(c, true);
                     }
                     KeyCode::Backspace => {
                         app.handle_multiline_backspace(true);
+                        app.ensure_headers_cursor_visible(3);
                     }
-                    KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
-                        app.handle_multiline_enter(true);
+                    KeyCode::Enter
+                        if key.modifiers.contains(KeyModifiers::CONTROL)
+                            || key.modifiers.contains(KeyModifiers::ALT) =>
+                    {
+                        app.send_request();
                     }
                     KeyCode::Enter => {
-                        app.send_request();
+                        app.handle_multiline_enter(true);
+                        app.ensure_headers_cursor_visible(3);
                     }
                     KeyCode::Up => {
                         app.handle_multiline_up(true);
+                        app.ensure_headers_cursor_visible(3);
                     }
                     KeyCode::Down => {
                         app.handle_multiline_down(true);
+                        app.ensure_headers_cursor_visible(3);
                     }
                     KeyCode::Left => {
                         app.handle_multiline_left(true);
@@ -140,9 +155,11 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                     }
                     KeyCode::Backspace => {
                         app.handle_multiline_backspace(false);
+                        app.ensure_body_cursor_visible(6);
                     }
                     KeyCode::Enter if key.modifiers.contains(KeyModifiers::SHIFT) => {
                         app.handle_multiline_enter(false);
+                        app.ensure_body_cursor_visible(6);
                     }
                     KeyCode::Enter
                         if key.modifiers.contains(KeyModifiers::CONTROL)
@@ -152,12 +169,15 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
                     }
                     KeyCode::Enter => {
                         app.handle_multiline_enter(false);
+                        app.ensure_body_cursor_visible(6);
                     }
                     KeyCode::Up => {
                         app.handle_multiline_up(false);
+                        app.ensure_body_cursor_visible(6);
                     }
                     KeyCode::Down => {
                         app.handle_multiline_down(false);
+                        app.ensure_body_cursor_visible(6);
                     }
                     KeyCode::Left => {
                         app.handle_multiline_left(false);
