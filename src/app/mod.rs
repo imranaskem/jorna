@@ -1,8 +1,10 @@
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 pub const METHODS: &[&str] = &["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"];
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum AppFocus {
     MethodSelector,
     UrlInput,
@@ -11,14 +13,39 @@ pub enum AppFocus {
     Response,
 }
 
-#[derive(Clone)]
+mod option_duration_millis {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(value: &Option<Duration>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            Some(d) => serializer.serialize_some(&d.as_millis()),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Duration>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt: Option<u64> = Option::deserialize(deserializer)?;
+        Ok(opt.map(Duration::from_millis))
+    }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 pub struct App {
     pub url_input: String,
     pub cursor_position: usize,
     pub response: String,
     pub response_scroll: u16,
+    #[serde(skip)]
     pub loading: bool,
     pub focus: AppFocus,
+    #[serde(skip)]
     pub should_quit: bool,
     pub http_method: String,
     pub method_index: usize,
@@ -30,6 +57,7 @@ pub struct App {
     pub body_cursor_line: usize,
     pub body_cursor_col: usize,
     pub body_scroll: u16,
+    #[serde(with = "option_duration_millis")]
     pub response_time: Option<Duration>,
     pub status_code: Option<u16>,
     pub response_size: Option<usize>,
@@ -62,6 +90,29 @@ impl App {
             status_code: None,
             response_size: None,
         }
+    }
+
+    pub fn state_file_path() -> Option<PathBuf> {
+        dirs::home_dir().map(|h| h.join(".jorna").join("state.json"))
+    }
+
+    pub fn save_state(&self) {
+        let Some(path) = Self::state_file_path() else {
+            return;
+        };
+        let Ok(json) = serde_json::to_string_pretty(self) else {
+            return;
+        };
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let _ = std::fs::write(path, json);
+    }
+
+    pub fn load_state() -> Option<Self> {
+        let path = Self::state_file_path()?;
+        let data = std::fs::read_to_string(path).ok()?;
+        serde_json::from_str(&data).ok()
     }
 
     pub fn send_request(&mut self) {

@@ -662,3 +662,127 @@ fn test_send_request_invalid_json_clears_metadata() {
     assert!(app.status_code.is_none());
     assert!(app.response_size.is_none());
 }
+
+// Serialization tests
+#[test]
+fn test_serialization_roundtrip() {
+    let app = App::new();
+    let json = serde_json::to_string(&app).unwrap();
+    let loaded: App = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(loaded.url_input, app.url_input);
+    assert_eq!(loaded.cursor_position, app.cursor_position);
+    assert_eq!(loaded.response, app.response);
+    assert_eq!(loaded.focus, app.focus);
+    assert_eq!(loaded.http_method, app.http_method);
+    assert_eq!(loaded.method_index, app.method_index);
+}
+
+#[test]
+fn test_serialization_transient_fields_excluded() {
+    let mut app = App::new();
+    app.loading = true;
+    app.should_quit = true;
+
+    let json = serde_json::to_string(&app).unwrap();
+    let loaded: App = serde_json::from_str(&json).unwrap();
+
+    // Transient fields should default to false on load
+    assert!(!loaded.loading);
+    assert!(!loaded.should_quit);
+}
+
+#[test]
+fn test_serialization_duration_some() {
+    let mut app = App::new();
+    app.response_time = Some(std::time::Duration::from_millis(250));
+
+    let json = serde_json::to_string(&app).unwrap();
+    assert!(json.contains("250"));
+
+    let loaded: App = serde_json::from_str(&json).unwrap();
+    assert_eq!(loaded.response_time, Some(std::time::Duration::from_millis(250)));
+}
+
+#[test]
+fn test_serialization_duration_none() {
+    let app = App::new();
+    assert!(app.response_time.is_none());
+
+    let json = serde_json::to_string(&app).unwrap();
+    let loaded: App = serde_json::from_str(&json).unwrap();
+    assert!(loaded.response_time.is_none());
+}
+
+#[test]
+fn test_serialization_populated_fields_survive_roundtrip() {
+    let mut app = App::new();
+    app.url_input = "https://example.com/api".to_string();
+    app.cursor_position = 10;
+    app.http_method = "POST".to_string();
+    app.method_index = 1;
+    app.headers_input = vec![
+        "Content-Type: application/json".to_string(),
+        "Authorization: Bearer abc".to_string(),
+    ];
+    app.headers_cursor_line = 1;
+    app.headers_cursor_col = 5;
+    app.body_input = vec!["{".to_string(), "  \"key\": \"value\"".to_string(), "}".to_string()];
+    app.body_cursor_line = 2;
+    app.body_cursor_col = 1;
+    app.response = "OK".to_string();
+    app.response_scroll = 3;
+    app.status_code = Some(200);
+    app.response_size = Some(512);
+    app.response_time = Some(std::time::Duration::from_millis(42));
+    app.focus = AppFocus::BodyInput;
+
+    let json = serde_json::to_string(&app).unwrap();
+    let loaded: App = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(loaded.url_input, "https://example.com/api");
+    assert_eq!(loaded.cursor_position, 10);
+    assert_eq!(loaded.http_method, "POST");
+    assert_eq!(loaded.method_index, 1);
+    assert_eq!(loaded.headers_input.len(), 2);
+    assert_eq!(loaded.headers_cursor_line, 1);
+    assert_eq!(loaded.headers_cursor_col, 5);
+    assert_eq!(loaded.body_input.len(), 3);
+    assert_eq!(loaded.body_cursor_line, 2);
+    assert_eq!(loaded.body_cursor_col, 1);
+    assert_eq!(loaded.response, "OK");
+    assert_eq!(loaded.response_scroll, 3);
+    assert_eq!(loaded.status_code, Some(200));
+    assert_eq!(loaded.response_size, Some(512));
+    assert_eq!(loaded.response_time, Some(std::time::Duration::from_millis(42)));
+    assert_eq!(loaded.focus, AppFocus::BodyInput);
+}
+
+#[test]
+fn test_serialization_unknown_fields_ignored() {
+    let json = r#"{
+        "url_input": "https://example.com",
+        "cursor_position": 0,
+        "response": "{}",
+        "response_scroll": 0,
+        "focus": "UrlInput",
+        "http_method": "GET",
+        "method_index": 0,
+        "headers_input": [""],
+        "headers_cursor_line": 0,
+        "headers_cursor_col": 0,
+        "headers_scroll": 0,
+        "body_input": [""],
+        "body_cursor_line": 0,
+        "body_cursor_col": 0,
+        "body_scroll": 0,
+        "response_time": null,
+        "status_code": null,
+        "response_size": null,
+        "some_future_field": "should be ignored"
+    }"#;
+
+    let loaded: Result<App, _> = serde_json::from_str(json);
+    assert!(loaded.is_ok());
+    assert_eq!(loaded.unwrap().url_input, "https://example.com");
+}
