@@ -1,6 +1,6 @@
 [package]
 name = "jorna"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2021"
 license = "MIT"
 
@@ -9,4 +9,6 @@ ratatui = { version = "0.30", features = ["crossterm_0_29"] }
 crossterm = "0.29"
 reqwest = { version = "0.12", features = ["blocking"] }
 anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+dirs = "6.0"
