@@ -701,7 +701,10 @@ fn test_serialization_duration_some() {
     assert!(json.contains("250"));
 
     let loaded: App = serde_json::from_str(&json).unwrap();
-    assert_eq!(loaded.response_time, Some(std::time::Duration::from_millis(250)));
+    assert_eq!(
+        loaded.response_time,
+        Some(std::time::Duration::from_millis(250))
+    );
 }
 
 #[test]
@@ -727,7 +730,11 @@ fn test_serialization_populated_fields_survive_roundtrip() {
     ];
     app.headers_cursor_line = 1;
     app.headers_cursor_col = 5;
-    app.body_input = vec!["{".to_string(), "  \"key\": \"value\"".to_string(), "}".to_string()];
+    app.body_input = vec![
+        "{".to_string(),
+        "  \"key\": \"value\"".to_string(),
+        "}".to_string(),
+    ];
     app.body_cursor_line = 2;
     app.body_cursor_col = 1;
     app.response = "OK".to_string();
@@ -754,7 +761,10 @@ fn test_serialization_populated_fields_survive_roundtrip() {
     assert_eq!(loaded.response_scroll, 3);
     assert_eq!(loaded.status_code, Some(200));
     assert_eq!(loaded.response_size, Some(512));
-    assert_eq!(loaded.response_time, Some(std::time::Duration::from_millis(42)));
+    assert_eq!(
+        loaded.response_time,
+        Some(std::time::Duration::from_millis(42))
+    );
     assert_eq!(loaded.focus, AppFocus::BodyInput);
 }
 
