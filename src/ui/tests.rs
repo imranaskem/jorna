@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::PickerEntry;
 use ratatui::{backend::TestBackend, Terminal};
 
 #[test]
@@ -455,4 +456,131 @@ fn test_ui_renders_status_line_with_only_status_code() {
     terminal
         .draw(|f| ui(f, &mut app))
         .expect("UI should render with only status code");
+}
+
+// --- Picker overlay tests ---
+
+#[test]
+fn test_ui_renders_picker_overlay() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    app.picker_entries = vec![
+        PickerEntry::Folder {
+            name: "Auth".to_string(),
+        },
+        PickerEntry::Request {
+            name: "Default".to_string(),
+            path: "Default".to_string(),
+        },
+    ];
+    app.picker_selected = 1;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render with picker overlay");
+}
+
+#[test]
+fn test_ui_renders_picker_empty_folder() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_entries = Vec::new();
+    app.picker_current_folder = "EmptyFolder".to_string();
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render picker with empty folder");
+}
+
+#[test]
+fn test_ui_renders_picker_naming_mode() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Naming;
+    app.picker_name_input = "MyRequest".to_string();
+    app.picker_name_cursor = 9;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render picker in naming mode");
+}
+
+#[test]
+fn test_ui_renders_picker_with_nested_folder_title() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_current_folder = "Auth/Admin".to_string();
+    app.picker_entries = vec![PickerEntry::Request {
+        name: "Delete User".to_string(),
+        path: "Auth/Admin/Delete User".to_string(),
+    }];
+    app.picker_selected = 0;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render picker with nested folder breadcrumb");
+}
+
+#[test]
+fn test_ui_renders_picker_active_request_marked() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.request_path = "Default".to_string();
+    app.picker_entries = vec![
+        PickerEntry::Request {
+            name: "Default".to_string(),
+            path: "Default".to_string(),
+        },
+        PickerEntry::Request {
+            name: "Other".to_string(),
+            path: "Other".to_string(),
+        },
+    ];
+    app.picker_selected = 0;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render picker with active request marker");
+}
+
+#[test]
+fn test_ui_renders_picker_small_terminal() {
+    let backend = TestBackend::new(40, 15);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_entries = vec![PickerEntry::Request {
+        name: "Test".to_string(),
+        path: "Test".to_string(),
+    }];
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render picker in small terminal");
+}
+
+#[test]
+fn test_ui_renders_picker_renaming_mode() {
+    let backend = TestBackend::new(80, 30);
+    let mut terminal = Terminal::new(backend).unwrap();
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Renaming;
+    app.picker_name_input = "NewName".to_string();
+    app.picker_name_cursor = 7;
+
+    terminal
+        .draw(|f| ui(f, &mut app))
+        .expect("UI should render picker in renaming mode");
 }

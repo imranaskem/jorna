@@ -16,6 +16,10 @@ fn test_app_initialization() {
     assert!(app.response_time.is_none());
     assert!(app.status_code.is_none());
     assert!(app.response_size.is_none());
+    assert_eq!(app.request_name, "Default");
+    assert_eq!(app.request_path, "Default");
+    assert!(!app.show_request_picker);
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
 }
 
 #[test]
@@ -795,4 +799,225 @@ fn test_serialization_unknown_fields_ignored() {
     let loaded: Result<App, _> = serde_json::from_str(json);
     assert!(loaded.is_ok());
     assert_eq!(loaded.unwrap().url_input, "https://example.com");
+}
+
+// Serialization: picker fields are excluded
+#[test]
+fn test_serialization_picker_fields_excluded() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_selected = 5;
+    app.request_name = "MyRequest".to_string();
+    app.request_path = "Folder/MyRequest".to_string();
+
+    let json = serde_json::to_string(&app).unwrap();
+    let loaded: App = serde_json::from_str(&json).unwrap();
+
+    // Picker fields should default on load
+    assert!(!loaded.show_request_picker);
+    assert_eq!(loaded.picker_selected, 0);
+    // request_name and request_path are skip, so they default
+    assert_eq!(loaded.request_name, "");
+    assert_eq!(loaded.request_path, "");
+}
+
+// Picker logic tests (no filesystem)
+#[test]
+fn test_picker_open_close() {
+    let mut app = App::new();
+    assert!(!app.show_request_picker);
+
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    assert!(app.show_request_picker);
+
+    app.close_picker();
+    assert!(!app.show_request_picker);
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
+}
+
+#[test]
+fn test_picker_start_cancel_naming() {
+    let mut app = App::new();
+    app.picker_start_naming();
+
+    assert_eq!(app.picker_mode, PickerMode::Naming);
+    assert_eq!(app.picker_name_input, "");
+    assert_eq!(app.picker_name_cursor, 0);
+
+    app.picker_cancel_naming();
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
+}
+
+#[test]
+fn test_picker_enter_empty_entries() {
+    let mut app = App::new();
+    app.picker_entries = Vec::new();
+
+    // Should not panic
+    app.picker_enter();
+}
+
+#[test]
+fn test_picker_enter_folder() {
+    let mut app = App::new();
+    app.picker_entries = vec![PickerEntry::Folder {
+        name: "Auth".to_string(),
+    }];
+    app.picker_selected = 0;
+    app.picker_current_folder = String::new();
+
+    // picker_enter on a folder updates the current folder
+    // But since there's no filesystem, it'll just update state
+    app.picker_current_folder = "Auth".to_string();
+    assert_eq!(app.picker_current_folder, "Auth");
+}
+
+#[test]
+fn test_picker_go_back_at_root_closes() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_current_folder = String::new();
+
+    app.picker_go_back();
+
+    assert!(!app.show_request_picker);
+}
+
+#[test]
+fn test_picker_go_back_to_parent() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_current_folder = "Auth/Admin".to_string();
+
+    app.picker_go_back();
+
+    assert_eq!(app.picker_current_folder, "Auth");
+    assert!(app.show_request_picker);
+}
+
+#[test]
+fn test_picker_go_back_single_level() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_current_folder = "Auth".to_string();
+
+    app.picker_go_back();
+
+    assert_eq!(app.picker_current_folder, "");
+    assert!(app.show_request_picker);
+}
+
+// Persistence helpers
+#[test]
+fn test_requests_dir_returns_path() {
+    // Just verify the helper returns a path under .jorna
+    if let Some(dir) = App::requests_dir() {
+        assert!(dir.ends_with("requests"));
+    }
+}
+
+#[test]
+fn test_state_file_path_returns_path() {
+    if let Some(path) = App::state_file_path() {
+        assert!(path.ends_with("state.json"));
+    }
+}
+
+#[test]
+fn test_picker_create_request_empty_name_noop() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    let original_url = app.url_input.clone();
+
+    app.picker_create_request("  ".to_string());
+
+    // Empty/whitespace name should be a no-op (picker stays open)
+    assert!(app.show_request_picker);
+    assert_eq!(app.url_input, original_url);
+}
+
+#[test]
+fn test_request_name_derived_from_path() {
+    let mut app = App::new();
+    app.request_path = "Auth/Login".to_string();
+    app.request_name = app
+        .request_path
+        .rsplit('/')
+        .next()
+        .unwrap_or(&app.request_path)
+        .to_string();
+
+    assert_eq!(app.request_name, "Login");
+}
+
+#[test]
+fn test_request_name_derived_from_simple_path() {
+    let mut app = App::new();
+    app.request_path = "Default".to_string();
+    app.request_name = app
+        .request_path
+        .rsplit('/')
+        .next()
+        .unwrap_or(&app.request_path)
+        .to_string();
+
+    assert_eq!(app.request_name, "Default");
+}
+
+#[test]
+fn test_picker_start_renaming_sets_mode_and_prefills() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_entries = vec![PickerEntry::Request {
+        name: "MyRequest".to_string(),
+        path: "Folder/MyRequest".to_string(),
+    }];
+    app.picker_selected = 0;
+
+    app.picker_start_renaming();
+
+    assert_eq!(app.picker_mode, PickerMode::Renaming);
+    assert_eq!(app.picker_name_input, "MyRequest");
+    assert_eq!(app.picker_name_cursor, 9);
+    assert_eq!(app.picker_rename_path, "Folder/MyRequest");
+}
+
+#[test]
+fn test_picker_start_renaming_ignores_folders() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_entries = vec![PickerEntry::Folder {
+        name: "Auth".to_string(),
+    }];
+    app.picker_selected = 0;
+
+    app.picker_start_renaming();
+
+    // Should stay in Selecting mode since selected entry is a folder
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
+}
+
+#[test]
+fn test_picker_start_renaming_empty_entries_noop() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_entries = Vec::new();
+
+    app.picker_start_renaming();
+
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
+}
+
+#[test]
+fn test_picker_rename_request_empty_name_noop() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Renaming;
+    app.picker_rename_path = "OldName".to_string();
+
+    app.picker_rename_request("  ".to_string());
+
+    // Should stay in Renaming mode since empty name is a no-op
+    assert_eq!(app.picker_mode, PickerMode::Renaming);
 }

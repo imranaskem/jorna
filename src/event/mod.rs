@@ -1,11 +1,23 @@
-use crate::app::{App, AppFocus, METHODS};
+use crate::app::{App, AppFocus, PickerMode, METHODS};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_key_event(app: &mut App, key: KeyEvent) {
+    // Picker overlay intercepts ALL keys when open
+    if app.show_request_picker {
+        handle_picker_key(app, key);
+        return;
+    }
+
     // Global keybindings
     match key.code {
         KeyCode::Esc => {
             app.should_quit = true;
+            return;
+        }
+        KeyCode::Char('p') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            if !app.loading {
+                app.open_picker();
+            }
             return;
         }
         KeyCode::Tab => {
@@ -204,6 +216,104 @@ pub fn handle_key_event(app: &mut App, key: KeyEvent) {
             }
             KeyCode::Home => {
                 app.response_scroll = 0;
+            }
+            _ => {}
+        },
+    }
+}
+
+fn handle_picker_key(app: &mut App, key: KeyEvent) {
+    match app.picker_mode {
+        PickerMode::Selecting => match key.code {
+            KeyCode::Up | KeyCode::Char('k') => {
+                if app.picker_selected > 0 {
+                    app.picker_selected -= 1;
+                }
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                if !app.picker_entries.is_empty()
+                    && app.picker_selected < app.picker_entries.len() - 1
+                {
+                    app.picker_selected += 1;
+                }
+            }
+            KeyCode::Enter => {
+                app.picker_enter();
+            }
+            KeyCode::Backspace => {
+                app.picker_go_back();
+            }
+            KeyCode::Esc => {
+                app.close_picker();
+            }
+            KeyCode::Char('n') => {
+                app.picker_start_naming();
+            }
+            KeyCode::Char('r') => {
+                app.picker_start_renaming();
+            }
+            KeyCode::Char('d') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                app.picker_delete_selected();
+            }
+            _ => {}
+        },
+        PickerMode::Naming => match key.code {
+            KeyCode::Char(c) => {
+                app.picker_name_input.insert(app.picker_name_cursor, c);
+                app.picker_name_cursor += 1;
+            }
+            KeyCode::Backspace => {
+                if app.picker_name_cursor > 0 {
+                    app.picker_name_cursor -= 1;
+                    app.picker_name_input.remove(app.picker_name_cursor);
+                }
+            }
+            KeyCode::Enter => {
+                let name = app.picker_name_input.clone();
+                app.picker_create_request(name);
+            }
+            KeyCode::Esc => {
+                app.picker_cancel_naming();
+            }
+            KeyCode::Left => {
+                if app.picker_name_cursor > 0 {
+                    app.picker_name_cursor -= 1;
+                }
+            }
+            KeyCode::Right => {
+                if app.picker_name_cursor < app.picker_name_input.len() {
+                    app.picker_name_cursor += 1;
+                }
+            }
+            _ => {}
+        },
+        PickerMode::Renaming => match key.code {
+            KeyCode::Char(c) => {
+                app.picker_name_input.insert(app.picker_name_cursor, c);
+                app.picker_name_cursor += 1;
+            }
+            KeyCode::Backspace => {
+                if app.picker_name_cursor > 0 {
+                    app.picker_name_cursor -= 1;
+                    app.picker_name_input.remove(app.picker_name_cursor);
+                }
+            }
+            KeyCode::Enter => {
+                let name = app.picker_name_input.clone();
+                app.picker_rename_request(name);
+            }
+            KeyCode::Esc => {
+                app.picker_cancel_naming();
+            }
+            KeyCode::Left => {
+                if app.picker_name_cursor > 0 {
+                    app.picker_name_cursor -= 1;
+                }
+            }
+            KeyCode::Right => {
+                if app.picker_name_cursor < app.picker_name_input.len() {
+                    app.picker_name_cursor += 1;
+                }
             }
             _ => {}
         },
