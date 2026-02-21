@@ -1,90 +1,47 @@
-# Jorna - Claude Context
+# CLAUDE.md
 
-Jorna is a terminal-based HTTP client built with Rust and Ratatui. It provides a keyboard-driven TUI for making HTTP requests.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Quick Reference
+## Project Overview
 
-- **Language:** Rust (Edition 2021)
-- **UI Framework:** Ratatui 0.30 with crossterm
-- **HTTP Client:** reqwest (blocking API)
-- **Version:** 0.1.2
-- **License:** MIT
+Jorna is a terminal-based HTTP client built with Rust and Ratatui. It provides a keyboard-driven TUI for making HTTP requests with session persistence.
+
+## Commands
+
+```bash
+cargo build --release          # Production build
+cargo run                      # Development run
+cargo test                     # All tests
+cargo test app::tests          # App module tests only
+cargo test <test_name>         # Single test by name
+cargo fmt --all -- --check     # Check formatting
+cargo clippy --all-targets --all-features -- -D warnings  # Lint
+```
+
+CI runs `fmt --check`, `clippy -D warnings`, `cargo test`, and a release build.
 
 ## Architecture
 
-```
-src/
-├── main.rs          # Entry point, terminal setup, event loop
-├── app/
-│   ├── mod.rs       # App state, HTTP logic, text editing
-│   └── tests.rs     # 50+ unit tests
-├── event/
-│   ├── mod.rs       # Keyboard event routing
-│   └── tests.rs     # 40+ tests
-└── ui/
-    ├── mod.rs       # Ratatui rendering
-    └── tests.rs     # 30+ tests
-```
-
 **Data Flow:** State (app/) → Events (event/) → Rendering (ui/)
 
-## Key Concepts
+- `src/main.rs` — Terminal setup, event loop, panic cleanup
+- `src/app/mod.rs` — `App` struct (all application state), HTTP request logic, text editing helpers
+- `src/event/mod.rs` — Keyboard event routing, dispatches to `App` methods based on `AppFocus`
+- `src/ui/mod.rs` — Ratatui rendering
+- Each module has a colocated `tests.rs` file
 
-### App State (`src/app/mod.rs`)
-- Single `App` struct holds all application state
-- `AppFocus` enum tracks which component has focus: `MethodSelector`, `UrlInput`, `HeadersInput`, `BodyInput`, `Response`
-- Multi-line text fields (headers, body) use `Vec<String>` with separate cursor tracking
-- `loading` flag blocks input during HTTP requests
+### Key Design Patterns
 
-### Supported HTTP Methods
-GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS (defined in `METHODS` array)
+- **Single state struct:** `App` holds everything — URL, headers, body, response, cursor positions, scroll offsets, focus state
+- **Focus-driven input:** `AppFocus` enum (`MethodSelector`, `UrlInput`, `HeadersInput`, `BodyInput`, `Response`) determines which key handler runs
+- **Multi-line text fields:** Headers and body use `Vec<String>` with separate `cursor_line`/`cursor_col`/`scroll` tracking (parameterized via `is_headers: bool`)
+- **Session persistence:** State serialized to `~/.jorna/state.json` via serde; saved after every key event, restored on startup
+- **Blocking HTTP:** Uses `reqwest::blocking` — the UI freezes during requests (the `loading` flag prevents input)
+- **Testing:** Uses Ratatui's `TestBackend` for UI tests
 
-### Keybindings
-- `Esc`: Quit
-- `Tab`: Cycle focus
-- `Enter`: Send request (from URL/method/headers)
-- `Ctrl+Enter` or `Alt+Enter`: Send from body input
-- `Shift+Enter`: New line in multi-line inputs
-- Arrow keys: Cursor movement / response scrolling
+### Adding a Feature
 
-## Common Tasks
-
-### Adding a new feature
 1. Add state fields to `App` struct in `src/app/mod.rs`
 2. Add keyboard handling in `src/event/mod.rs`
 3. Add UI rendering in `src/ui/mod.rs`
-4. Write tests in corresponding `tests.rs` files
-
-### Running tests
-```bash
-cargo test              # All tests
-cargo test app::tests   # App module only
-```
-
-### Building
-```bash
-cargo build --release   # Production build
-cargo run               # Development run
-```
-
-## CI/CD
-
-- **CI:** Runs on every push - linting (rustfmt, clippy), testing, release build
-- **Release:** Triggered after CI on main - builds macOS ARM64 binary, creates GitHub release, updates Homebrew formula
-
-## Dependencies
-
-| Crate | Purpose |
-|-------|---------|
-| ratatui | Terminal UI framework |
-| crossterm | Terminal manipulation |
-| reqwest | HTTP client |
-| anyhow | Error handling |
-| serde_json | JSON parsing |
-
-## Important Patterns
-
-- **Focus-driven input:** Each `AppFocus` state has independent key handlers
-- **Validation before send:** Empty URL and invalid JSON are caught before requests
-- **Error display:** Network/parsing errors shown in response area
-- **Testing:** Uses Ratatui's `TestBackend` for UI tests; colocated test files
+4. Write tests in the corresponding `tests.rs` files
