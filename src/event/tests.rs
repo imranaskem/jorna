@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::PickerEntry;
 use crossterm::event::KeyModifiers;
 
 fn create_key_event(code: KeyCode) -> KeyEvent {
@@ -557,4 +558,289 @@ fn test_body_input_ctrl_f_blocked_when_loading() {
 
     // Should not format because loading is true
     assert_eq!(app.body_input, vec!["{\"key\":\"value\"}".to_string()]);
+}
+
+// --- Picker event tests ---
+
+#[test]
+fn test_ctrl_p_opens_picker() {
+    let mut app = App::new();
+    assert!(!app.show_request_picker);
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL),
+    );
+
+    assert!(app.show_request_picker);
+}
+
+#[test]
+fn test_ctrl_p_blocked_when_loading() {
+    let mut app = App::new();
+    app.loading = true;
+
+    handle_key_event(
+        &mut app,
+        KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL),
+    );
+
+    assert!(!app.show_request_picker);
+}
+
+#[test]
+fn test_picker_esc_closes() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Esc));
+
+    assert!(!app.show_request_picker);
+    // Esc should NOT quit when picker is open
+    assert!(!app.should_quit);
+}
+
+#[test]
+fn test_picker_navigation_up_down() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    app.picker_entries = vec![
+        PickerEntry::Folder {
+            name: "Auth".to_string(),
+        },
+        PickerEntry::Request {
+            name: "Default".to_string(),
+            path: "Default".to_string(),
+        },
+        PickerEntry::Request {
+            name: "Test".to_string(),
+            path: "Test".to_string(),
+        },
+    ];
+    app.picker_selected = 0;
+
+    // Down
+    handle_key_event(&mut app, create_key_event(KeyCode::Down));
+    assert_eq!(app.picker_selected, 1);
+
+    // Down again
+    handle_key_event(&mut app, create_key_event(KeyCode::Down));
+    assert_eq!(app.picker_selected, 2);
+
+    // Down at bottom - stays
+    handle_key_event(&mut app, create_key_event(KeyCode::Down));
+    assert_eq!(app.picker_selected, 2);
+
+    // Up
+    handle_key_event(&mut app, create_key_event(KeyCode::Up));
+    assert_eq!(app.picker_selected, 1);
+
+    // Up at top - stays
+    app.picker_selected = 0;
+    handle_key_event(&mut app, create_key_event(KeyCode::Up));
+    assert_eq!(app.picker_selected, 0);
+}
+
+#[test]
+fn test_picker_j_k_navigation() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    app.picker_entries = vec![
+        PickerEntry::Request {
+            name: "A".to_string(),
+            path: "A".to_string(),
+        },
+        PickerEntry::Request {
+            name: "B".to_string(),
+            path: "B".to_string(),
+        },
+    ];
+    app.picker_selected = 0;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('j')));
+    assert_eq!(app.picker_selected, 1);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('k')));
+    assert_eq!(app.picker_selected, 0);
+}
+
+#[test]
+fn test_picker_n_starts_naming() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('n')));
+
+    assert_eq!(app.picker_mode, PickerMode::Naming);
+}
+
+#[test]
+fn test_picker_naming_input() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Naming;
+    app.picker_name_input = String::new();
+    app.picker_name_cursor = 0;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('T')));
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('e')));
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('s')));
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('t')));
+
+    assert_eq!(app.picker_name_input, "Test");
+    assert_eq!(app.picker_name_cursor, 4);
+}
+
+#[test]
+fn test_picker_naming_backspace() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Naming;
+    app.picker_name_input = "Test".to_string();
+    app.picker_name_cursor = 4;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Backspace));
+
+    assert_eq!(app.picker_name_input, "Tes");
+    assert_eq!(app.picker_name_cursor, 3);
+}
+
+#[test]
+fn test_picker_naming_esc_cancels() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Naming;
+    app.picker_name_input = "Test".to_string();
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Esc));
+
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
+    // Picker should stay open
+    assert!(app.show_request_picker);
+    // App should NOT quit
+    assert!(!app.should_quit);
+}
+
+#[test]
+fn test_picker_naming_cursor_movement() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Naming;
+    app.picker_name_input = "Test".to_string();
+    app.picker_name_cursor = 4;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Left));
+    assert_eq!(app.picker_name_cursor, 3);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Right));
+    assert_eq!(app.picker_name_cursor, 4);
+
+    // Right at end stays
+    handle_key_event(&mut app, create_key_event(KeyCode::Right));
+    assert_eq!(app.picker_name_cursor, 4);
+}
+
+#[test]
+fn test_picker_tab_does_not_cycle_focus() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    app.focus = AppFocus::UrlInput;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Tab));
+
+    // Focus should NOT change when picker is open
+    assert_eq!(app.focus, AppFocus::UrlInput);
+}
+
+#[test]
+fn test_picker_backspace_at_root_closes() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    app.picker_current_folder = String::new();
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Backspace));
+
+    assert!(!app.show_request_picker);
+}
+
+#[test]
+fn test_picker_r_starts_renaming() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Selecting;
+    app.picker_entries = vec![PickerEntry::Request {
+        name: "Test".to_string(),
+        path: "Test".to_string(),
+    }];
+    app.picker_selected = 0;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('r')));
+
+    assert_eq!(app.picker_mode, PickerMode::Renaming);
+    assert_eq!(app.picker_name_input, "Test");
+    assert_eq!(app.picker_name_cursor, 4);
+}
+
+#[test]
+fn test_picker_renaming_esc_cancels() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Renaming;
+    app.picker_name_input = "NewName".to_string();
+    app.picker_name_cursor = 7;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Esc));
+
+    assert_eq!(app.picker_mode, PickerMode::Selecting);
+    assert!(app.show_request_picker);
+    assert!(!app.should_quit);
+}
+
+#[test]
+fn test_picker_renaming_text_input() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Renaming;
+    app.picker_name_input = "Old".to_string();
+    app.picker_name_cursor = 3;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Char('!')));
+
+    assert_eq!(app.picker_name_input, "Old!");
+    assert_eq!(app.picker_name_cursor, 4);
+}
+
+#[test]
+fn test_picker_renaming_backspace() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Renaming;
+    app.picker_name_input = "Test".to_string();
+    app.picker_name_cursor = 4;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Backspace));
+
+    assert_eq!(app.picker_name_input, "Tes");
+    assert_eq!(app.picker_name_cursor, 3);
+}
+
+#[test]
+fn test_picker_renaming_cursor_movement() {
+    let mut app = App::new();
+    app.show_request_picker = true;
+    app.picker_mode = PickerMode::Renaming;
+    app.picker_name_input = "Test".to_string();
+    app.picker_name_cursor = 4;
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Left));
+    assert_eq!(app.picker_name_cursor, 3);
+
+    handle_key_event(&mut app, create_key_event(KeyCode::Right));
+    assert_eq!(app.picker_name_cursor, 4);
 }

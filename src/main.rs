@@ -34,7 +34,8 @@ fn run_app(
                 }
 
                 handle_key_event(&mut app, key);
-                app.save_state();
+                app.save_request();
+                app.save_active_path();
             }
         }
     }
@@ -74,7 +75,7 @@ fn main() -> anyhow::Result<()> {
     let mut terminal = Terminal::new(CrosstermBackend::new(stdout()))?;
 
     // Initialize app state (restore previous session or start fresh)
-    let app = App::load_state().unwrap_or_else(App::new);
+    let app = App::initialize();
 
     // Run app with proper error handling
     let result = run_app(&mut terminal, app);

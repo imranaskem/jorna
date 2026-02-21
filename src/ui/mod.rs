@@ -1,9 +1,9 @@
-use crate::app::{App, AppFocus};
+use crate::app::{App, AppFocus, PickerEntry, PickerMode};
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph, Wrap},
+    widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
 
@@ -61,12 +61,13 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
         Line::from(app.url_input.as_str())
     };
 
+    let url_title = format!("Url [{}]", app.request_name);
     let input_widget = Paragraph::new(input_text)
         .style(Style::default().fg(Color::DarkGray))
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Url")
+                .title(url_title)
                 .border_style(if app.focus == AppFocus::UrlInput {
                     Style::default().fg(Color::Cyan)
                 } else {
@@ -208,17 +209,149 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
     } else {
         match app.focus {
             AppFocus::MethodSelector => {
-                "↑↓: Change Method | Enter: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit"
+                "↑↓: Change Method | Enter: Send | Tab/Shift+Tab: Switch Focus | Ctrl+P: Requests | Esc: Quit"
             }
-            AppFocus::UrlInput => "Enter: Send | Tab/Shift+Tab: Switch Focus | ←→: Move Cursor | Esc: Quit",
-            AppFocus::HeadersInput => "Ctrl+T: Indent | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
-            AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Esc: Quit",
-            AppFocus::Response => "↑↓: Scroll | Tab/Shift+Tab: Switch Focus | Esc: Quit",
+            AppFocus::UrlInput => "Enter: Send | Tab/Shift+Tab: Switch Focus | ←→: Move Cursor | Ctrl+P: Requests | Esc: Quit",
+            AppFocus::HeadersInput => "Ctrl+T: Indent | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Ctrl+P: Requests | Esc: Quit",
+            AppFocus::BodyInput => "Ctrl+T: Indent | Ctrl+F: Format | Ctrl+S: Send | Tab/Shift+Tab: Switch Focus | Ctrl+P: Requests | Esc: Quit",
+            AppFocus::Response => "↑↓: Scroll | Tab/Shift+Tab: Switch Focus | Ctrl+P: Requests | Esc: Quit",
         }
     };
     let instructions_widget =
         Paragraph::new(instructions).style(Style::default().fg(Color::DarkGray));
     frame.render_widget(instructions_widget, chunks[5]);
+
+    // Picker overlay
+    if app.show_request_picker {
+        render_picker_overlay(frame, app);
+    }
+}
+
+fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(area);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}
+
+fn render_picker_overlay(frame: &mut Frame, app: &App) {
+    let area = centered_rect(60, 50, frame.area());
+
+    frame.render_widget(Clear, area);
+
+    // Build title showing folder breadcrumb
+    let title = if app.picker_current_folder.is_empty() {
+        "Requests".to_string()
+    } else {
+        format!(
+            "Requests > {}",
+            app.picker_current_folder.replace('/', " > ")
+        )
+    };
+
+    // Split area for list + instructions
+    let inner_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(1),    // List area
+            Constraint::Length(2), // Instructions
+        ])
+        .split(area);
+
+    // Build list lines
+    let mut lines: Vec<Line> = Vec::new();
+
+    if app.picker_entries.is_empty() {
+        lines.push(Line::from(Span::styled(
+            "  (empty folder)",
+            Style::default().fg(Color::DarkGray),
+        )));
+    } else {
+        for (i, entry) in app.picker_entries.iter().enumerate() {
+            let is_selected = i == app.picker_selected;
+
+            let (display, is_active) = match entry {
+                PickerEntry::Folder { name } => (format!("  {}/", name), false),
+                PickerEntry::Request { name, path } => {
+                    let marker = if path == &app.request_path {
+                        "* "
+                    } else {
+                        "  "
+                    };
+                    (format!("{}{}", marker, name), path == &app.request_path)
+                }
+            };
+
+            let style = if is_selected {
+                Style::default().bg(Color::Cyan).fg(Color::Black)
+            } else if is_active {
+                Style::default().fg(Color::Cyan)
+            } else {
+                Style::default().fg(Color::DarkGray)
+            };
+
+            lines.push(Line::from(Span::styled(display, style)));
+        }
+    }
+
+    let list_widget = Paragraph::new(lines).block(
+        Block::default()
+            .borders(Borders::ALL)
+            .title(title)
+            .border_style(Style::default().fg(Color::Cyan)),
+    );
+    frame.render_widget(list_widget, inner_chunks[0]);
+
+    // Instructions line
+    let instructions_text = match app.picker_mode {
+        PickerMode::Selecting => {
+            "↑↓: Navigate | Enter: Open | Backspace: Back | N: New | R: Rename | Ctrl+D: Delete | Esc: Close"
+        }
+        PickerMode::Naming => "Enter: Create | Esc: Cancel",
+        PickerMode::Renaming => "Enter: Rename | Esc: Cancel",
+    };
+
+    let instructions_line = match app.picker_mode {
+        PickerMode::Naming | PickerMode::Renaming => {
+            let label = if app.picker_mode == PickerMode::Naming {
+                "Name: "
+            } else {
+                "Rename: "
+            };
+            let before = &app.picker_name_input[..app.picker_name_cursor];
+            let after = &app.picker_name_input[app.picker_name_cursor..];
+            Line::from(vec![
+                Span::styled(label, Style::default().fg(Color::DarkGray)),
+                Span::raw(before),
+                Span::styled("█", Style::default().fg(Color::Cyan)),
+                Span::raw(after),
+                Span::styled(
+                    format!("  ({})", instructions_text),
+                    Style::default().fg(Color::DarkGray),
+                ),
+            ])
+        }
+        _ => Line::from(Span::styled(
+            instructions_text,
+            Style::default().fg(Color::DarkGray),
+        )),
+    };
+
+    let instructions_widget = Paragraph::new(instructions_line).wrap(Wrap { trim: false });
+    frame.render_widget(instructions_widget, inner_chunks[1]);
 }
 
 #[cfg(test)]
